@@ -14,3 +14,20 @@ class SigmoidActivator(object):
 
     def backward(self, output):
         return output * (1 - output)
+
+
+class ReluActivator(object):
+    def forward(self, weighted_input):
+        # return weighted_input
+        return max(0, weighted_input)
+
+    def backward(self, output):
+        return 1 if output > 0 else 0
+
+
+class IdentityActivator(object):
+    def forward(self, weighted_input):
+        return weighted_input
+
+    def backward(self, output):
+        return 1
