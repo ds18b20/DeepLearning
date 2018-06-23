@@ -38,7 +38,7 @@ class Loader(object):
             self.shape = tuple(struct.unpack('>I', f.read(4))[0] for d in range(self.dims))
             return np.fromstring(f.read(), dtype = np.uint8).reshape(self.shape)
     
-    def load(self, norm=True):
+    def load(self, norm=False):
         """
         convert data to vector
         """
@@ -143,7 +143,7 @@ if __name__ == '__main__':
     end_time = time.time()
     print('Run time: {}'.format(end_time-start_time))
     print('image shape: {}, label shape: {}'.format(images.shape, labels.shape))
-    print(img[0])
+    print(img[14])
     plt.imshow(img, cmap='gray')
     plt.show()
     

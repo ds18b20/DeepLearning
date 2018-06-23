@@ -144,8 +144,8 @@ if __name__ == '__main__':
     img = np.array(images[0]).reshape(28, 28)
     end_time = time.time()
     print('Run time: {}'.format(end_time-start_time))
-    print('image shape: {}, label shape: {}'.format((len(images),len(labels[0])), len(labels)))
-    print(img[0])
+    print('image shape: {}, label shape: {}'.format((len(images),len(images[0])), len(labels)))
+    print(img[14])
     plt.imshow(img, cmap='gray')
     plt.show()
     
