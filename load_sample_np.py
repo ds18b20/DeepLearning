@@ -7,6 +7,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 # 数据加载器基类
 class Loader(object):
     def __init__(self, path):
@@ -35,21 +36,9 @@ class Loader(object):
         """
         with open(self.path, 'rb') as f:
             zero, self.data_type, self.dims = struct.unpack('>HBB', f.read(4))
-            self.shape = tuple(struct.unpack('>I', f.read(4))[0] for d in range(self.dims))
-            return np.fromstring(f.read(), dtype = np.uint8).reshape(self.shape)
-    
-    def load(self, norm=False):
-        """
-        convert data to vector
-        """
-        if norm == True:
-            ret = self.load_raw() / 255
-        else:
-            ret = self.load_raw()
-        if self.dims > 1:
-            return ret.reshape(self.shape[0], -1)
-        else:
-            return ret
+            self.shape = tuple(struct.unpack('>I', f.read(4))[0] for _ in range(self.dims))
+            return np.frombuffer(f.read(), dtype=np.uint8).reshape(self.shape)
+
 
 # 图像数据加载器
 class ImageLoader(Loader):
@@ -70,16 +59,20 @@ class ImageLoader(Loader):
     def __init__(self, path):
         super(ImageLoader, self).__init__(path)
 
+    def load(self, norm=False):
+        """
+        convert data to vector
+        """
+        if norm:
+            ret = self.load_raw() / 255
+        else:
+            ret = self.load_raw()
+        assert self.dims == 3
+        return ret.reshape(self.shape[0], -1)
+
     def get_one_image(self, index):
         assert self.dims > 1
         return self.load_raw()[index]
-
-    def show_one_image(self, image):
-        """
-        plt show one image
-        """
-        plt.imshow(image, cmap='gray')
-        plt.show()
 
 
 # 标签数据加载器
@@ -106,11 +99,20 @@ class LabelLoader(Loader):
         """
         row_count = self.shape[0]
         column_count = label_count
+
         label_one_hot = np.zeros((row_count, column_count))
-        
-        label_one_hot[range(row_count), self.load()] = 1
+        label_one_hot[range(row_count), self.load(norm=False)] = 1
         
         return label_one_hot
+
+    def load(self, norm=False):
+        """
+        convert data to vector
+        """
+        ret = self.load_raw()
+        assert self.dims == 1
+        return ret
+
 
 def get_training_data_set(sample_count=100):
     """

@@ -19,12 +19,23 @@ def read_idx(filename):
     with open(filename, 'rb') as f:
         zero, data_type, dims = struct.unpack('>HBB', f.read(4))
         print(zero, data_type, dims)
-        print('type of dims: ', type(dims))
         shape = tuple(struct.unpack('>I', f.read(4))[0] for d in range(dims))
-        # print(shape)
-        return np.fromstring(f.read(), dtype=np.uint8).reshape(shape)
+        print(shape)
+        return np.frombuffer(f.read(), dtype=np.uint8).reshape(shape)
+
+def test(filename):
+    with open(filename, 'rb') as f:
+        zero, data_type, dims = struct.unpack('>HBB', f.read(4))
+        print(zero, data_type, dims)
+        ret = struct.unpack('>I', f.read(4))
+        print(ret)
+        ret = struct.unpack('>I', f.read(4))
+        print(ret)
+        ret = struct.unpack('>I', f.read(4))
+        print(ret)
 
 if __name__ == '__main__':
     # ret = read_idx('train-images.idx3-ubyte')
-    ret = read_idx('train-labels.idx1-ubyte')
-    print(ret.shape)
+    # ret = read_idx('train-labels.idx1-ubyte')
+    # print(ret.shape)
+    test('train-images.idx3-ubyte')
