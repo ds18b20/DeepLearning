@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 import struct
-# from bpVec import *
-from datetime import datetime
-import time
-import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -59,19 +55,16 @@ class ImageLoader(Loader):
     def __init__(self, path):
         super(ImageLoader, self).__init__(path)
 
-    def load(self, norm=False):
+    def load(self):
         """
         convert data to vector
         """
-        if norm:
-            ret = self.load_raw() / 255
-        else:
-            ret = self.load_raw()
+        ret = self.load_raw()
         assert self.dims == 3
         return ret.reshape(self.shape[0], -1)
 
     def get_one_image(self, index):
-        assert self.dims > 1
+        assert self.dims == 3
         return self.load_raw()[index]
 
 
@@ -93,7 +86,7 @@ class LabelLoader(Loader):
     def __init__(self, path):
         super(LabelLoader, self).__init__(path)
 
-    def norm(self, label, label_count=10):
+    def norm(self, label_count=10):
         """
         (sample_count, )-->(sample_count, label_count)
         """
@@ -101,11 +94,11 @@ class LabelLoader(Loader):
         column_count = label_count
 
         label_one_hot = np.zeros((row_count, column_count))
-        label_one_hot[range(row_count), self.load(norm=False)] = 1
+        label_one_hot[range(row_count), self.load()] = 1
         
         return label_one_hot
 
-    def load(self, norm=False):
+    def load(self):
         """
         convert data to vector
         """
