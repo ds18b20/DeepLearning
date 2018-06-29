@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 import struct
-# from bpVec import *
-from datetime import datetime
-import time
-import matplotlib.pyplot as plt
 import numpy as np
 
 
