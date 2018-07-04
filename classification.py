@@ -6,6 +6,7 @@ import numpy as np
 
 
 def softmax(X):
+    X = X - X.max(axis=1, keepdims=True)
     exp = np.exp(X)
     return exp / np.sum(exp, axis=1, keepdims=True)
 
@@ -21,7 +22,7 @@ def cross_entropy(y_hat, y):
     return -np.log(picked)    
     
     
-def accuracy(y_hat, y):
+def accuracy(y_hat: np.array, y: np.array):
     return (y_hat.argmax(axis=1) == y).mean()
     
     
@@ -35,6 +36,7 @@ def show_fashion_imgs(images, titles):
         figs[i].axes.get_yaxis().set_visible(False)
         figs[i].axes.set_title(titles[i])
     plt.show()
+
 
 if __name__ == '__main__':
     mnist = datasets.MNIST()
@@ -53,5 +55,3 @@ if __name__ == '__main__':
     b = np.zeros(num_outputs)
     
     print(net(sample_x, W, b).shape)
-    
-    
