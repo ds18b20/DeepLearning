@@ -6,9 +6,9 @@ import numpy as np
 
 
 class Classification(object):
-    def __init__(self, weights, bias, learning_rate):
-        self.W = weights  # (28*28, 10)
-        self.b = bias  # (10,)
+    def __init__(self, input_num, output_num, learning_rate):
+        self.W = np.random.normal(loc=0.0, scale=0.1, size=(input_num, output_num))  # (28*28, 10)
+        self.b = np.zeros(output_num)  # (10,)
         self.lr = learning_rate
     
         self.fc_out = None
@@ -20,7 +20,7 @@ class Classification(object):
     
         self.d_fc_out = None
     
-    def net(self, input_batch):
+    def fc(self, input_batch):
         """
         calculate fully-connected layer
         :param input_batch: (5, 28*28)
@@ -36,7 +36,7 @@ class Classification(object):
         :param label_batch: (5,)
         :return: None
         """
-        self.fc_out = self.net(input_batch)  # (5, 10)
+        self.fc_out = self.fc(input_batch)  # (5, 10)
         self.sm_out = softmax(self.fc_out)  # (5, 10)
         self.ce_out = cross_entropy(self.sm_out, label_batch)  # (1,)
     
@@ -46,10 +46,8 @@ class Classification(object):
         :param labels: (5,)
         :return: None
         """
-        if labels.ndim == 1:
-            self.d_fc_out = self.sm_out - datasets.one_hot(labels)  # (5, 10)
-        elif labels.ndim == 2:
-            self.d_fc_out = self.sm_out - labels  # (5, 10)
+        assert labels.ndim == 1
+        self.d_fc_out = self.sm_out - datasets.one_hot(labels)  # (5, 10)
 
     def bp_fc(self, input_batch):
         """
@@ -71,6 +69,10 @@ class Classification(object):
         self.bp_fc(input_batch)
 
     def update_para(self):
+        """
+        update parameters: W & b
+        :return: None
+        """
         self.W -= self.lr * self.d_W
         self.b -= self.lr * self.d_b
 
@@ -82,7 +84,7 @@ def softmax(array):
 
 
 def cross_entropy(y_hat, y):
-    delta = 1e-6  # not log(0)
+    delta = 1e-6  # in case of log(0)
     row_count = y_hat.shape[0]
     index_row = range(row_count)
     index_column = y
@@ -91,13 +93,14 @@ def cross_entropy(y_hat, y):
 
 
 def accuracy(y_hat: np.array, y: np.array):
-    return (y_hat.argmax(axis=1) == y).mean()
+    tmp = y_hat.argmax(axis=1) == y  # type: np.ndarray
+    return np.mean(tmp)
 
 
-# def epoch_accuracy(self, data_iter, net):
+# def epoch_accuracy(self, data_iter, fc):
 #     acc = 0
 #     for X, y in data_iter:
-#     acc += accuracy(net(X), y)
+#     acc += accuracy(fc(X), y)
 #     return acc / len(data_iter)
 
 def show_fashion_imgs(images, titles):
@@ -115,24 +118,16 @@ def show_fashion_imgs(images, titles):
 if __name__ == '__main__':
     mnist = datasets.MNIST()
     train_x, train_y, test_x, test_y = mnist.load(image_flat=True, label_one_hot=False)
-
-    # show_fashion_imgs(sample_train_x, sample_train_y)
-
-    num_inputs, num_outputs = 28 * 28, 10
-    W = np.random.normal(loc=0.0, scale=0.1, size=(num_inputs, num_outputs))
-    b = np.zeros(num_outputs)
-    op = Classification(W, b, learning_rate=0.01)
+    # show sample images
+    sample_train_x, sample_train_y = datasets.get_one_batch(train_x, train_y, batch_size=5)
+    show_fashion_imgs(sample_train_x, sample_train_y)
+    # train & evaluate
+    op = Classification(input_num=28 * 28, output_num=10, learning_rate=0.01)
     for _ in range(1000):
         sample_train_x, sample_train_y = datasets.get_one_batch(train_x, train_y, batch_size=5)
-        sample_test_x, sample_test_y = datasets.get_one_batch(test_x, test_y, batch_size=5)
         op.forward(sample_train_x, sample_train_y)
-        # print(op.fc_out.shape)
-        # print(op.sm_out.shape)
-        # print(op.ce_out.shape)
-        # print(op.ce_out)
         op.backward(sample_train_x, sample_train_y)
         op.update_para()
         if _ % 50 == 0:
-            acc = accuracy(op.net(test_x), test_y)
+            acc = accuracy(op.fc(test_x), test_y)
             print("accuracy: {}".format(acc))
-
