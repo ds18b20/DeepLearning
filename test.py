@@ -69,7 +69,8 @@ class Classification2(object):
         :return: None
         """
         assert labels.ndim == 1
-        self.d_fc2_out = self.sm_out - datasets.one_hot(labels)  # (5, 10)
+        batch_size = self.sm_out.shape[0]
+        self.d_fc2_out = self.sm_out - datasets.one_hot(labels) / batch_size  # (5, 10)
 
     def bp_fc2(self):
         """
@@ -83,7 +84,7 @@ class Classification2(object):
         self.d_activate_out = np.dot(self.d_fc2_out, self.W2.T)  # (5, 10) dot (100, 10).T->(5, 100)
 
     def bp_activate(self):
-        idx = self.fc1_out < 0
+        idx = self.fc1_out <= 0
         tmp = self.d_activate_out.copy()  # (5, 100)
         tmp[idx] = 0
         self.d_fc1_out = tmp  # (5, 100)
@@ -161,12 +162,12 @@ def show_fashion_imgs(images, titles):
 
 if __name__ == '__main__':
     mnist = datasets.MNIST()
-    train_x, train_y, test_x, test_y = mnist.load(image_flat=True, label_one_hot=False)
+    train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
     # show sample images
     sample_train_x, sample_train_y = datasets.get_one_batch(train_x, train_y, batch_size=5)
     show_fashion_imgs(sample_train_x, sample_train_y)
     # train & evaluate
-    op = Classification2(input_size=28 * 28, hidden_size=100, output_size=10, learning_rate=0.01)
+    op = Classification2(input_size=28 * 28, hidden_size=50, output_size=10, learning_rate=0.01)
     for _ in range(1000):
         sample_train_x, sample_train_y = datasets.get_one_batch(train_x, train_y, batch_size=5)
         op.forward(sample_train_x, sample_train_y)
