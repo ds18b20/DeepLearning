@@ -66,16 +66,20 @@ class MNIST(Loader):
         self.test_image_path = 't10k-images.idx3-ubyte'
         self.test_label_path = 't10k-labels.idx1-ubyte'
         
-    def load(self, image_flat=False, label_one_hot=False):
+    def load(self, normalize=True, image_flat=False, label_one_hot=False):
         train_image = self.load_raw(self.train_image_path)
         train_label = self.load_raw(self.train_label_path)
         test_image = self.load_raw(self.test_image_path)
         test_label = self.load_raw(self.test_label_path)
         
+        if normalize:
+            train_image = train_image / 255.0
+            test_image = test_image / 255.0
+
         if image_flat:
             train_image = train_image.reshape(train_image.shape[0], -1)
             test_image = test_image.reshape(test_image.shape[0], -1)
-            
+
         if label_one_hot:
             train_label = one_hot(train_label)
             test_label = one_hot(test_label)
@@ -83,15 +87,15 @@ class MNIST(Loader):
         return train_image, train_label, test_image, test_label
 
 
-def one_hot(vect, length=10):
+def one_hot(vec, length=10):
     """
-    (vect_count, )-->(vect_count, length)
+    (vec_count, )-->(vec_count, length)
     """
-    row_count = len(vect)
+    row_count = len(vec)
     column_count = length
 
     label_one_hot = np.zeros((row_count, column_count))
-    label_one_hot[range(row_count), vect] = 1
+    label_one_hot[range(row_count), vec] = 1
     
     return label_one_hot
     
