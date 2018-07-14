@@ -117,10 +117,11 @@ def show_fashion_imgs(images, titles):
 
 if __name__ == '__main__':
     mnist = datasets.MNIST()
-    train_x, train_y, test_x, test_y = mnist.load(image_flat=True, label_one_hot=False)
+    train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
     # show sample images
     sample_train_x, sample_train_y = datasets.get_one_batch(train_x, train_y, batch_size=5)
-    show_fashion_imgs(sample_train_x, sample_train_y)
+    # show_fashion_imgs(sample_train_x, sample_train_y)
+    print(sample_train_x[0])
     # train & evaluate
     op = Classification(input_num=28 * 28, output_num=10, learning_rate=0.01)
     for _ in range(1000):
