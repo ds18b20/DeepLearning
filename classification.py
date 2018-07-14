@@ -103,7 +103,7 @@ def accuracy(y_hat: np.array, y: np.array):
 #     acc += accuracy(fc(X), y)
 #     return acc / len(data_iter)
 
-def show_fashion_imgs(images, titles):
+def show_sample_imgs(images, titles):
     n = images.shape[0]
     # _, figs = plt.subplots(1, n, figsize=(15, 15))
     _, figs = plt.subplots(1, n)
@@ -120,8 +120,7 @@ if __name__ == '__main__':
     train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
     # show sample images
     sample_train_x, sample_train_y = datasets.get_one_batch(train_x, train_y, batch_size=5)
-    # show_fashion_imgs(sample_train_x, sample_train_y)
-    print(sample_train_x[0])
+    show_sample_imgs(sample_train_x, sample_train_y)
     # train & evaluate
     op = Classification(input_num=28 * 28, output_num=10, learning_rate=0.01)
     for _ in range(1000):
