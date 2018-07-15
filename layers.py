@@ -16,7 +16,7 @@ class Affine(object):
         self.y = None
 
     def __str__(self):
-        if type(self.x) == np.ndarray:
+        if hasattr(self.x, 'shape'):
             batch_size = self.x.shape[0]
         else:
             batch_size = '?'
@@ -46,11 +46,11 @@ class Relu(object):
         self.d_x = None
 
     def __str__(self):
-        if type(self.x) == np.ndarray:
+        if hasattr(self.x, 'shape'):
             x_shape = self.x.shape
         else:
             x_shape = ('?', '?')
-        if type(self.y) == np.ndarray:
+        if hasattr(self.x, 'shape'):
             y_shape = self.y.shape
         else:
             y_shape = ('?', '?')
@@ -81,15 +81,15 @@ class SoftmaxCrossEntropy(object):
         self.d_x = None
 
     def __str__(self):
-        if type(self.x) == np.ndarray:
+        if hasattr(self.x, 'shape'):
             x_shape = self.x.shape
         else:
             x_shape = ('?', '?')
-        if type(self.y) == np.ndarray:
+        if hasattr(self.x, 'shape'):
             y_shape = self.y.shape
         else:
             y_shape = ('?', '?')
-        if type(self.loss) == np.float64:
+        if hasattr(self.x, 'shape'):
             loss_shape = self.loss.shape
         else:
             loss_shape = ('?', '?')
