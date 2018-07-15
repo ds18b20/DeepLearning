@@ -87,16 +87,26 @@ if __name__ == '__main__':
     # sample_train_x, sample_train_t = datasets.get_one_batch(train_x, train_t, batch_size=5)
     # show_sample_imgs(sample_train_x, sample_train_y)
     learning_rate = 0.1
+    train_acc_list = []
+    test_acc_list = []
     net = TwoLayerNet(input_size=28 * 28, hidden_size=50, output_size=10)
     # # train & evaluate
-    for iter in range(1000):
+    for i in range(1000):
         sample_train_x, sample_train_t = datasets.get_one_batch(train_x, train_t, batch_size=5)
         gradients = net.gradient(sample_train_x, sample_train_t)
         # update parameters: mini-batch gradient descent
         for key in ("W1", "b1", "W2", "b2"):
             net.params[key] -= learning_rate * gradients[key]
-        if iter % 50 == 0:
-            acc = net.accuracy(train_x, train_t)
-            print("accuracy: {:.3f}".format(acc))
+        if i % 50 == 0:
+            acc_train = net.accuracy(train_x, train_t)
+            train_acc_list.append(acc_train)
+            acc_test = net.accuracy(test_x, test_t)
+            test_acc_list.append(acc_test)
+            print("train accuracy: {:.3f}".format(acc_train), "test accuracy: {:.3f}".format(acc_test))
+    plt.plot(train_acc_list, label='train accuracy')
+    plt.plot(test_acc_list, label='test accuracy')
+    tmp = np.mean(np.array(net.loss_list).reshape(-1, 50), axis=1)
+    plt.plot(tmp, label='loss')
+    plt.legend()
 
-    # net.loss_list
+    plt.show()
