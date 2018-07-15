@@ -13,13 +13,13 @@ class Classification2(object):
         self.b2 = np.zeros(output_size)  # (10,)
 
         self.lr = learning_rate
-    
+
         self.fc1_out = None
         self.activate_out = None
         self.fc2_out = None
         self.sm_out = None
         self.ce_out = None
-    
+
         self.d_W1 = None
         self.d_b1 = None
         self.d_fc1_out = None
@@ -32,23 +32,22 @@ class Classification2(object):
         """
         calculate fully-connected layer
         :param input_batch: (5, 28*28)
-                    self.W: (28*28, 10)
-        :return: X dot W + b = (5, 10)
+        self.W1: (28*28, 100)
+        :return: X dot W + b = (5, 100)
         """
-        return np.dot(input_batch, self.W1) + self.b1  # (5, 10)
+        return np.dot(input_batch, self.W1) + self.b1  # (5, 100)
 
-    def activate(self):
-        mask = ???
-        self.activate_out =
+    def activate(self, array):
+        return np.maximum(array, 0)
 
     def fc2(self, input_batch):
         """
         calculate fully-connected layer
-        :param input_batch: (5, 28*28)
-                    self.W: (28*28, 10)
+        :param input_batch: (5, 100)
+        self.W: (100, 10)
         :return: X dot W + b = (5, 10)
         """
-        return np.dot(input_batch, self.W) + self.b  # (5, 10)
+        return np.dot(input_batch, self.W2) + self.b2  # (5, 10)
 
     def forward(self, input_batch, label_batch):
         """
@@ -57,10 +56,12 @@ class Classification2(object):
         :param label_batch: (5,)
         :return: None
         """
-        self.fc_out = self.fc(input_batch)  # (5, 10)
-        self.sm_out = softmax(self.fc_out)  # (5, 10)
+        self.fc1_out = self.fc1(input_batch)  # (5, 100)
+        self.activate_out = self.activate(self.fc1_out)  # (5, 100)
+        self.fc2_out = self.fc2(self.activate_out)  # (5, 10)
+        self.sm_out = softmax(self.fc2_out)  # (5, 10)
         self.ce_out = cross_entropy(self.sm_out, label_batch)  # (1,)
-    
+
     def bp_softmax_cross_entropy(self, labels):
         """
         softmax_cross_entropy back propagation
@@ -68,17 +69,35 @@ class Classification2(object):
         :return: None
         """
         assert labels.ndim == 1
-        self.d_fc_out = self.sm_out - datasets.one_hot(labels)  # (5, 10)
+        batch_size = self.sm_out.shape[0]
+        self.d_fc2_out = self.sm_out - datasets.one_hot(labels) / batch_size  # (5, 10)
 
-    def bp_fc(self, input_batch):
+    def bp_fc2(self):
+        """
+        fully-connected back propagation
+        :param: None
+        :return: None
+        self.activate_out: (5, 100)
+        """
+        self.d_W2 = np.dot(self.activate_out.T, self.d_fc2_out)  # (5, 100).T dot (5, 10)->(100, 10)
+        self.d_b2 = np.sum(self.d_fc2_out, axis=0, keepdims=False)  # (10,)
+        self.d_activate_out = np.dot(self.d_fc2_out, self.W2.T)  # (5, 10) dot (100, 10).T->(5, 100)
+
+    def bp_activate(self):
+        idx = self.fc1_out <= 0
+        tmp = self.d_activate_out.copy()  # (5, 100)
+        tmp[idx] = 0
+        self.d_fc1_out = tmp  # (5, 100)
+
+    def bp_fc1(self, input_batch):
         """
         fully-connected back propagation
         :param input_batch: (5, 28*28)
         :return: None
         """
-        self.d_W = np.dot(input_batch.T, self.d_fc_out)  # (28*28, 10)
-        self.d_b = np.sum(self.d_fc_out, axis=0, keepdims=False)  # (10,)
-    
+        self.d_W1 = np.dot(input_batch.T, self.d_fc1_out)  # (5, 28*28).T dot (5, 100)->(28*28, 100)
+        self.d_b1 = np.sum(self.d_fc1_out, axis=0, keepdims=False)  # (100,)
+
     def backward(self, input_batch, labels):
         """
         backward calculate & update weights and bias
@@ -87,20 +106,25 @@ class Classification2(object):
         :return: None
         """
         self.bp_softmax_cross_entropy(labels)  # (5， 10)
-        self.bp_fc(input_batch)
+        self.bp_fc2()
+        self.bp_activate()
+        self.bp_fc1(input_batch)
 
     def update_para(self):
         """
         update parameters: W & b
         :return: None
         """
-        self.W -= self.lr * self.d_W
-        self.b -= self.lr * self.d_b
+        self.W2 -= self.lr * self.d_W2
+        self.b2 -= self.lr * self.d_b2
+        self.W1 -= self.lr * self.d_W1
+        self.b1 -= self.lr * self.d_b1
 
 
 def softmax(array):
-    array -= array.max(axis=1, keepdims=True)  # max of array in axis 1
-    exp = np.exp(array)
+    tmp = array.copy()
+    tmp -= tmp.max(axis=1, keepdims=True)  # max of array in axis 1
+    exp = np.exp(tmp)
     return exp / np.sum(exp, axis=1, keepdims=True)
 
 
@@ -119,10 +143,10 @@ def accuracy(y_hat: np.array, y: np.array):
 
 
 # def epoch_accuracy(self, data_iter, fc):
-#     acc = 0
-#     for X, y in data_iter:
-#     acc += accuracy(fc(X), y)
-#     return acc / len(data_iter)
+# acc = 0
+# for X, y in data_iter:
+# acc += accuracy(fc(X), y)
+# return acc / len(data_iter)
 
 def show_fashion_imgs(images, titles):
     n = images.shape[0]
@@ -138,17 +162,26 @@ def show_fashion_imgs(images, titles):
 
 if __name__ == '__main__':
     mnist = datasets.MNIST()
-    train_x, train_y, test_x, test_y = mnist.load(image_flat=True, label_one_hot=False)
+    train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
     # show sample images
     sample_train_x, sample_train_y = datasets.get_one_batch(train_x, train_y, batch_size=5)
     show_fashion_imgs(sample_train_x, sample_train_y)
     # train & evaluate
-    op = Classification(input_size=28 * 28, output_size=10, learning_rate=0.01)
+    op = Classification2(input_size=28 * 28, hidden_size=50, output_size=10, learning_rate=0.01)
     for _ in range(1000):
         sample_train_x, sample_train_y = datasets.get_one_batch(train_x, train_y, batch_size=5)
         op.forward(sample_train_x, sample_train_y)
         op.backward(sample_train_x, sample_train_y)
         op.update_para()
         if _ % 50 == 0:
-            acc = accuracy(op.fc(test_x), test_y)
+            acc = accuracy(op.fc2(op.activate(op.fc1(test_x))), test_y)
             print("accuracy: {}".format(acc))
+
+    # a = np.array([[1, 2, 3], [3, 4, 1]])
+    # print("a before:")
+    # print(a)
+    # b = softmax(a)
+    # print("a after:")
+    # print(a)
+    # print("b:")
+    # print(b)
