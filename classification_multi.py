@@ -3,152 +3,72 @@
 import datasets
 import matplotlib.pyplot as plt
 import numpy as np
+from collections import OrderedDict
+import layers
 
 
-class Classification2(object):
-    def __init__(self, input_size, hidden_size, output_size, learning_rate):
-        self.W1 = np.random.normal(loc=0.0, scale=0.1, size=(input_size, hidden_size))  # (28*28, 100)
-        self.b1 = np.zeros(hidden_size)  # (100,)
-        self.W2 = np.random.normal(loc=0.0, scale=0.1, size=(hidden_size, output_size))  # (100, 10)
-        self.b2 = np.zeros(output_size)  # (10,)
+class TwoLayerNet(object):
+    def __init__(self, input_size, hidden_size, output_size):
+        # init para
+        weight_init_std = 0.01
+        self.params = {}
+        self.params['W1'] = weight_init_std * np.random.randn(input_size, hidden_size)
+        self.params['b1'] = np.zeros(hidden_size)
+        self.params['W2'] = weight_init_std * np.random.randn(hidden_size, output_size)
+        self.params['b2'] = np.zeros(output_size)
 
-        self.lr = learning_rate
+        # create layers
+        self.layers = OrderedDict()
+        self.layers['Affine1'] = layers.Affine(self.params['W1'], self.params['b1'])
+        self.layers['Relu1'] = layers.Relu()
+        self.layers['Affine2'] = layers.Affine(self.params['W2'], self.params['b2'])
 
-        self.fc1_out = None
-        self.activate_out = None
-        self.fc2_out = None
-        self.sm_out = None
-        self.ce_out = None
+        self.lossLayer = layers.SoftmaxCrossEntropy()
 
-        self.d_W1 = None
-        self.d_b1 = None
-        self.d_fc1_out = None
-        self.d_activate_out = None
-        self.d_W2 = None
-        self.d_b2 = None
-        self.d_fc2_out = None
+        self.loss_list = []
 
-    def fc1(self, input_batch):
-        """
-        calculate fully-connected layer
-        :param input_batch: (5, 28*28)
-        self.W1: (28*28, 100)
-        :return: X dot W + b = (5, 100)
-        """
-        return np.dot(input_batch, self.W1) + self.b1  # (5, 100)
+    def predict(self, x_batch):
+        tmp = x_batch.copy()
+        for layer in self.layers.values():
+            tmp = layer.forward(tmp)
+            # print(layer)
+        return tmp
 
-    def activate(self, array):
-        return np.maximum(array, 0)
+    def loss(self, x_batch, t_batch):
+        y = self.predict(x_batch)
+        ret = self.lossLayer.forward(y, t_batch)
+        # print(self.lossLayer)
+        return ret
 
-    def fc2(self, input_batch):
-        """
-        calculate fully-connected layer
-        :param input_batch: (5, 100)
-        self.W: (100, 10)
-        :return: X dot W + b = (5, 10)
-        """
-        return np.dot(input_batch, self.W2) + self.b2  # (5, 10)
+    def accuracy(self, x_batch, t_batch):
+        y = self.predict(x_batch)
+        y = np.argmax(y, axis=1)
+        # if t_batch.ndim != 1:
+        #     tmp = t_batch.copy()
+        #     tmp = np.argmax(tmp, axis=1)
+        accuracy = np.sum(y == t_batch) / float(x_batch.shape[0])
+        return accuracy
 
-    def forward(self, input_batch, label_batch):
-        """
-        forward calculate & store mediate nodes value
-        :param input_batch: (5, 28*28)
-        :param label_batch: (5,)
-        :return: None
-        """
-        self.fc1_out = self.fc1(input_batch)  # (5, 100)
-        self.activate_out = self.activate(self.fc1_out)  # (5, 100)
-        self.fc2_out = self.fc2(self.activate_out)  # (5, 10)
-        self.sm_out = softmax(self.fc2_out)  # (5, 10)
-        self.ce_out = cross_entropy(self.sm_out, label_batch)  # (1,)
+    def gradient(self, x_batch, t_batch):
+        # forward
+        loss = self.loss(x_batch, t_batch)
+        self.loss_list.append(loss)
+        # backward
+        d_y = 1
+        d_y = self.lossLayer.backward(d_y)
+        layers_list = list(self.layers.values())
+        layers_list.reverse()
+        for layer in layers_list:
+            d_y = layer.backward(d_y)
+        # calculate garadients
+        grads = {}
+        grads["W1"], grads["b1"] = self.layers["Affine1"].d_W, self.layers["Affine1"].d_b
+        grads["W2"], grads["b2"] = self.layers["Affine2"].d_W, self.layers["Affine2"].d_b
 
-    def bp_softmax_cross_entropy(self, labels):
-        """
-        softmax_cross_entropy back propagation
-        :param labels: (5,)
-        :return: None
-        """
-        assert labels.ndim == 1
-        batch_size = self.sm_out.shape[0]
-        self.d_fc2_out = self.sm_out - datasets.one_hot(labels) / batch_size  # (5, 10)
-
-    def bp_fc2(self):
-        """
-        fully-connected back propagation
-        :param: None
-        :return: None
-        self.activate_out: (5, 100)
-        """
-        self.d_W2 = np.dot(self.activate_out.T, self.d_fc2_out)  # (5, 100).T dot (5, 10)->(100, 10)
-        self.d_b2 = np.sum(self.d_fc2_out, axis=0, keepdims=False)  # (10,)
-        self.d_activate_out = np.dot(self.d_fc2_out, self.W2.T)  # (5, 10) dot (100, 10).T->(5, 100)
-
-    def bp_activate(self):
-        idx = self.fc1_out <= 0
-        tmp = self.d_activate_out.copy()  # (5, 100)
-        tmp[idx] = 0
-        self.d_fc1_out = tmp  # (5, 100)
-
-    def bp_fc1(self, input_batch):
-        """
-        fully-connected back propagation
-        :param input_batch: (5, 28*28)
-        :return: None
-        """
-        self.d_W1 = np.dot(input_batch.T, self.d_fc1_out)  # (5, 28*28).T dot (5, 100)->(28*28, 100)
-        self.d_b1 = np.sum(self.d_fc1_out, axis=0, keepdims=False)  # (100,)
-
-    def backward(self, input_batch, labels):
-        """
-        backward calculate & update weights and bias
-        :param input_batch: (5, 28*28)
-        :param labels: (5,)
-        :return: None
-        """
-        self.bp_softmax_cross_entropy(labels)  # (5， 10)
-        self.bp_fc2()
-        self.bp_activate()
-        self.bp_fc1(input_batch)
-
-    def update_para(self):
-        """
-        update parameters: W & b
-        :return: None
-        """
-        self.W2 -= self.lr * self.d_W2
-        self.b2 -= self.lr * self.d_b2
-        self.W1 -= self.lr * self.d_W1
-        self.b1 -= self.lr * self.d_b1
+        return grads
 
 
-def softmax(array):
-    tmp = array.copy()
-    tmp -= tmp.max(axis=1, keepdims=True)  # max of array in axis 1
-    exp = np.exp(tmp)
-    return exp / np.sum(exp, axis=1, keepdims=True)
-
-
-def cross_entropy(y_hat, y):
-    delta = 1e-6  # in case of log(0)
-    row_count = y_hat.shape[0]
-    index_row = range(row_count)
-    index_column = y
-    picked = y_hat[index_row, index_column] + delta
-    return np.sum(-np.log(picked)) / row_count
-
-
-def accuracy(y_hat: np.array, y: np.array):
-    tmp = y_hat.argmax(axis=1) == y  # type: np.ndarray
-    return np.mean(tmp)
-
-
-# def epoch_accuracy(self, data_iter, fc):
-# acc = 0
-# for X, y in data_iter:
-# acc += accuracy(fc(X), y)
-# return acc / len(data_iter)
-
-def show_fashion_imgs(images, titles):
+def show_sample_imgs(images, titles):
     n = images.shape[0]
     # _, figs = plt.subplots(1, n, figsize=(15, 15))
     _, figs = plt.subplots(1, n)
@@ -162,26 +82,21 @@ def show_fashion_imgs(images, titles):
 
 if __name__ == '__main__':
     mnist = datasets.MNIST()
-    train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
+    train_x, train_t, test_x, test_t = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
     # show sample images
-    sample_train_x, sample_train_y = datasets.get_one_batch(train_x, train_y, batch_size=5)
-    show_fashion_imgs(sample_train_x, sample_train_y)
-    # train & evaluate
-    op = Classification2(input_size=28 * 28, hidden_size=50, output_size=10, learning_rate=0.01)
-    for _ in range(1000):
-        sample_train_x, sample_train_y = datasets.get_one_batch(train_x, train_y, batch_size=5)
-        op.forward(sample_train_x, sample_train_y)
-        op.backward(sample_train_x, sample_train_y)
-        op.update_para()
-        if _ % 50 == 0:
-            acc = accuracy(op.fc2(op.activate(op.fc1(test_x))), test_y)
-            print("accuracy: {}".format(acc))
+    # sample_train_x, sample_train_t = datasets.get_one_batch(train_x, train_t, batch_size=5)
+    # show_sample_imgs(sample_train_x, sample_train_y)
+    learning_rate = 0.1
+    net = TwoLayerNet(input_size=28 * 28, hidden_size=50, output_size=10)
+    # # train & evaluate
+    for iter in range(1000):
+        sample_train_x, sample_train_t = datasets.get_one_batch(train_x, train_t, batch_size=5)
+        gradients = net.gradient(sample_train_x, sample_train_t)
+        # update parameters: mini-batch gradient descent
+        for key in ("W1", "b1", "W2", "b2"):
+            net.params[key] -= learning_rate * gradients[key]
+        if iter % 50 == 0:
+            acc = net.accuracy(train_x, train_t)
+            print("accuracy: {:.3f}".format(acc))
 
-    # a = np.array([[1, 2, 3], [3, 4, 1]])
-    # print("a before:")
-    # print(a)
-    # b = softmax(a)
-    # print("a after:")
-    # print(a)
-    # print("b:")
-    # print(b)
+    # net.loss_list

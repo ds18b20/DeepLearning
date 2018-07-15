@@ -105,5 +105,5 @@ class SoftmaxCrossEntropy(object):
     def backward(self, d_y=1):
         assert self.t.ndim == 1
         batch_size = self.y.shape[0]
-        self.d_x = self.y - datasets.one_hot(self.t) / batch_size
+        self.d_x = (self.y - datasets.one_hot(self.t)) / batch_size  # fix here: (y - t) / batch
         return d_y * self.d_x

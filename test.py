@@ -67,6 +67,7 @@ class TwoLayerNet(object):
 
         return grads
 
+
 def show_sample_imgs(images, titles):
     n = images.shape[0]
     # _, figs = plt.subplots(1, n, figsize=(15, 15))
@@ -85,7 +86,7 @@ if __name__ == '__main__':
     # show sample images
     # sample_train_x, sample_train_t = datasets.get_one_batch(train_x, train_t, batch_size=5)
     # show_sample_imgs(sample_train_x, sample_train_y)
-    learning_rate=0.01
+    learning_rate = 0.1
     net = TwoLayerNet(input_size=28 * 28, hidden_size=50, output_size=10)
     # # train & evaluate
     for iter in range(1000):
@@ -96,6 +97,6 @@ if __name__ == '__main__':
             net.params[key] -= learning_rate * gradients[key]
         if iter % 50 == 0:
             acc = net.accuracy(train_x, train_t)
-            print("accuracy: {}".format(acc))
+            print("accuracy: {:.3f}".format(acc))
 
     # net.loss_list
