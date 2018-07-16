@@ -113,7 +113,7 @@ if __name__ == '__main__':
     test_acc_list = []
     net = TwoLayerNet(input_size=28 * 28, hidden_size=50, output_size=10, weight_decay_lambda=0.2)
     # # train & evaluate
-    for i in range(10000):
+    for i in range(5000):
         sample_train_x, sample_train_t = datasets.get_one_batch(train_x, train_t, batch_size=10)
         gradients = net.gradient(sample_train_x, sample_train_t)
         # update parameters: mini-batch gradient descent
