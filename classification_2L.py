@@ -80,6 +80,19 @@ def show_sample_imgs(images, titles):
     plt.show()
 
 
+def show_accuracy_loss(train_acc, test_acc, loss):
+    n = 2
+    _, figs = plt.subplots(1, n)
+    # fig[0]: train accuracy & test accuracy
+    figs[0].plot(train_acc, label='train accuracy')
+    figs[0].plot(test_acc, label='test accuracy')
+    figs[0].legend()
+    # fig[1]: loss
+    figs[1].plot(loss, label='loss')
+    figs[1].legend()
+    plt.show()
+
+
 if __name__ == '__main__':
     mnist = datasets.MNIST()
     train_x, train_t, test_x, test_t = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
@@ -103,10 +116,6 @@ if __name__ == '__main__':
             acc_test = net.accuracy(test_x, test_t)
             test_acc_list.append(acc_test)
             print("train accuracy: {:.3f}".format(acc_train), "test accuracy: {:.3f}".format(acc_test))
-    plt.plot(train_acc_list, label='train accuracy')
-    plt.plot(test_acc_list, label='test accuracy')
-    tmp = np.mean(np.array(net.loss_list).reshape(-1, 50), axis=1)
-    plt.plot(tmp, label='loss')
-    plt.legend()
 
-    plt.show()
+    tmp = np.mean(np.array(net.loss_list).reshape(-1, 50), axis=1)
+    show_accuracy_loss(train_acc_list, test_acc_list, tmp)
