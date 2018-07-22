@@ -2,9 +2,6 @@
 # -*- coding: UTF-8 -*-
 import matplotlib.pyplot as plt
 import numpy as np
-import cv2
-import time
-from selenium import webdriver
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.keys import Keys
@@ -12,6 +9,21 @@ import pickle
 from PIL import Image
 from io import BytesIO
 import base64
+import cv2
+import time
+import functools
+
+
+def timeit(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        func(*args, **kwargs)
+        elapsed_time = time.time() - start_time
+        print('function [{}] finished in {} ms'.format(
+            func.__name__, int(elapsed_time * 1000)))
+    return wrapper
+
 
 # path variables#path v
 game_url = "chrome://dino"
@@ -26,10 +38,11 @@ scores_file_path = "./objects/scores_df.csv"
 init_script = "document.getElementsByClassName('runner-canvas')[0].id = 'runner-canvas'"
 
 # get image from canvas
-getbase64Script = "canvasRunner = document.getElementById('runner-canvas'); \
-return canvasRunner.toDataURL().substring(22)"
+# getbase64Script = "canvasRunner = document.getElementById('runner-canvas'); \
+# return canvasRunner.toDataURL().substring(22)"
 
-
+getbase64Script = "canvasRunner = document.getElementsByClassName('runner-canvas')[0]; \
+ return canvasRunner.toDataURL().substring(22)"
 '''
 * Game class: Selenium interfacing between the python and browser
 * __init__():  Launch the browser window using the attributes in chrome_options
@@ -49,7 +62,7 @@ class Game(object):
         chrome_options = Options()
         chrome_options.add_argument("disable-infobars")
         chrome_options.add_argument("--mute-audio")
-        self._driver = webdriver.Chrome(executable_path=chrome_driver_path,chrome_options=chrome_options)
+        self._driver = webdriver.Chrome(executable_path=chrome_driver_path, chrome_options=chrome_options)
         self._driver.set_window_position(x=-10, y=0)
         self._driver.get('chrome://dino')
         self._driver.execute_script("Runner.config.ACCELERATION=0")
@@ -139,8 +152,7 @@ def load_obj(name):
 
 def grab_screen(_driver):
     image_b64 = _driver.execute_script(getbase64Script)
-    screen = np.array(Image.open(BytesIO(base64.b64decode(image_b64))))
-    image = process_img(screen)  # processing image as required
+    image = np.array(Image.open(BytesIO(base64.b64decode(image_b64))))
     return image
 
 
@@ -151,39 +163,43 @@ def process_img(image):
     return image
 
 
-def show_img(graphs=False):
+def show_img(driver, graphs=False):
     """
     Show images in new window
     """
     while True:
-        screen = (yield)
+        image = grab_screen(driver)
+        # image = process_img(image)
         window_title = "logs" if graphs else "game_play"
         cv2.namedWindow(window_title, cv2.WINDOW_NORMAL)
-        imS = cv2.resize(screen, (800, 400))
-        cv2.imshow(window_title, screen)
+        print(image.shape)
+        cv2.imshow(window_title, image)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             cv2.destroyAllWindows()
             break
 
 if __name__ == "__main__":
     game = Game()
-    dino = DinoAgent(game)
-    # while game.get_crashed():
-    count = 0
-    crush_flag = game.get_crashed()
-    play_flag = game.get_playing()
-    print("Crush: {}".format(crush_flag))
-    print("Play:  {}".format(play_flag))
-    while True:
-        game.press_down()
-        time.sleep(0.5)
-        # crush_flag = game.get_crashed()
-        # play_flag = game.get_playing()
-        # time.sleep(0.5)
-        # game.press_up()
-        # if crush_flag:
-        #     count += 1
-        #     time.sleep(1)
-        #     game.restart()
-        #     if count > 2:
-        #         break
+
+    show_img(game._driver)
+
+    # dino = DinoAgent(game)
+    # # while game.get_crashed():
+    # count = 0
+    # crush_flag = game.get_crashed()
+    # play_flag = game.get_playing()
+    # print("Crush: {}".format(crush_flag))
+    # print("Play:  {}".format(play_flag))
+    # while True:
+    #     game.press_down()
+    #     time.sleep(0.5)
+    #     crush_flag = game.get_crashed()
+    #     play_flag = game.get_playing()
+    #     time.sleep(0.5)
+    #     game.press_up()
+    #     if crush_flag:
+    #         count += 1
+    #         time.sleep(1)
+    #         game.restart()
+    #         if count > 2:
+    #             break
