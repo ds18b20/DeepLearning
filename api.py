@@ -37,12 +37,14 @@ scores_file_path = "./objects/scores_df.csv"
 # create id for canvas for faster selection from DOM
 init_script = "document.getElementsByClassName('runner-canvas')[0].id = 'runner-canvas'"
 
+# use id created above
 # get image from canvas
-# getbase64Script = "canvasRunner = document.getElementById('runner-canvas'); \
-# return canvasRunner.toDataURL().substring(22)"
+getbase64Script = "canvasRunner = document.getElementById('runner-canvas'); \
+return canvasRunner.toDataURL().substring(22)"
 
-getbase64Script = "canvasRunner = document.getElementsByClassName('runner-canvas')[0]; \
- return canvasRunner.toDataURL().substring(22)"
+# slower version to return canvas data
+# getbase64Script = "canvasRunner = document.getElementsByClassName('runner-canvas')[0]; \
+#  return canvasRunner.toDataURL().substring(22)"
 '''
 * Game class: Selenium interfacing between the python and browser
 * __init__():  Launch the browser window using the attributes in chrome_options
@@ -97,6 +99,11 @@ class Game(object):
     def end(self):
         self._driver.close()
 
+    def screen_capture(self):
+        image_b64 = self._driver.execute_script(getbase64Script)
+        image = np.array(Image.open(BytesIO(base64.b64decode(image_b64))))
+        return image
+
 
 class DinoAgent(object):
     def __init__(self, game):  # takes game as input for taking actions
@@ -150,56 +157,45 @@ def load_obj(name):
         return pickle.load(f)
 
 
-def grab_screen(_driver):
-    image_b64 = _driver.execute_script(getbase64Script)
-    image = np.array(Image.open(BytesIO(base64.b64decode(image_b64))))
-    return image
-
-
 def process_img(image):
+    """
+    process image data
+    :param image: raw input array
+    :return: processed image data
+    """
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)  # RGB to Grey Scale
-    image = image[:300, :500]  # Crop Region of Interest(ROI)
+    image = image[:131, 65:65+131]  # [0:131, 65:65+131] crop Region of Interest(ROI)
     image = cv2.resize(image, (80, 80))
     return image
 
 
-def show_img(driver, graphs=False):
+def show_img(graphs=False):
     """
-    Show images in new window
+    show images in a new window, using Python coroutine.
+    :param graphs: select window title name
+    :return: None
     """
     while True:
-        image = grab_screen(driver)
-        # image = process_img(image)
+        screen = (yield)
         window_title = "logs" if graphs else "game_play"
         cv2.namedWindow(window_title, cv2.WINDOW_NORMAL)
-        print(image.shape)
-        cv2.imshow(window_title, image)
+        cv2.imshow(window_title, screen)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             cv2.destroyAllWindows()
             break
 
 if __name__ == "__main__":
     game = Game()
+    coroutines = show_img()
+    coroutines.__next__()
 
-    show_img(game._driver)
+    while True:
+        # read from canvas
+        img = game.screen_capture()
+        print("raw data shape: {}".format(img.shape))
 
-    # dino = DinoAgent(game)
-    # # while game.get_crashed():
-    # count = 0
-    # crush_flag = game.get_crashed()
-    # play_flag = game.get_playing()
-    # print("Crush: {}".format(crush_flag))
-    # print("Play:  {}".format(play_flag))
-    # while True:
-    #     game.press_down()
-    #     time.sleep(0.5)
-    #     crush_flag = game.get_crashed()
-    #     play_flag = game.get_playing()
-    #     time.sleep(0.5)
-    #     game.press_up()
-    #     if crush_flag:
-    #         count += 1
-    #         time.sleep(1)
-    #         game.restart()
-    #         if count > 2:
-    #             break
+        # send new image data to coroutine
+        img = process_img(img)
+        print("processed data shape: {}".format(img.shape))
+
+        coroutines.send(img)
