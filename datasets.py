@@ -61,10 +61,10 @@ class Loader(object):
 class MNIST(Loader):
     def __init__(self):
         super(MNIST, self).__init__()
-        self.train_image_path = 'train-images.idx3-ubyte'
-        self.train_label_path = 'train-labels.idx1-ubyte'
-        self.test_image_path = 't10k-images.idx3-ubyte'
-        self.test_label_path = 't10k-labels.idx1-ubyte'
+        self.train_image_path = 'data/train-images.idx3-ubyte'
+        self.train_label_path = 'data/train-labels.idx1-ubyte'
+        self.test_image_path = 'data/t10k-images.idx3-ubyte'
+        self.test_label_path = 'data/t10k-labels.idx1-ubyte'
         
     def load(self, normalize=True, image_flat=False, label_one_hot=False):
         train_image = self.load_raw(self.train_image_path)
