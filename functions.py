@@ -28,5 +28,3 @@ def check_is_ndarray(input_array):
         return isinstance(input_array, np.ndarray)  # or use: hasattr(input_array, shape)
     except TypeError:
         print("Input data type should be ndarray.")
-        
-    

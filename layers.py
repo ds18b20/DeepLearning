@@ -1,8 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import datasets
 import numpy as np
+
+import datasets
 import functions
+
+class Conv(object):
+    def __init__(self, weights, bias):
+        self.W = weights
+        self.b = bias
 
 
 class Affine(object):
@@ -14,6 +20,8 @@ class Affine(object):
 
         self.x = None
         self.y = None
+        
+        self.d_x = None
 
     def __str__(self):
         if hasattr(self.x, 'shape'):
@@ -27,15 +35,16 @@ class Affine(object):
         return ret_str
 
     def forward(self, x_batch):
-        self.x = x_batch.copy()
+        # self.x = x_batch.copy()
+        self.x = x_batch
         self.y = np.dot(self.x, self.W) + self.b
         return self.y
 
     def backward(self, d_y):
-        d_x = np.dot(d_y, self.W.T)
+        self.d_x = np.dot(d_y, self.W.T)
         self.d_W = np.dot(self.x.T, d_y)
         self.d_b = np.sum(d_y, axis=0)
-        return d_x
+        return self.d_x
 
 
 class Relu(object):
@@ -58,13 +67,14 @@ class Relu(object):
         return "Relu layer: {} => {}".format(x_shape, y_shape)
 
     def forward(self, x_batch):
-        self.x = x_batch.copy()
+        # self.x = x_batch.copy()
+        self.x = x_batch
         self.y = np.maximum(self.x, 0)
         return self.y
 
     def backward(self, d_y):
         idx = (self.x <= 0)
-        tmp = d_y.copy()
+        tmp = d_y.copy()  # keep d_y not modified, even modification is OK
         tmp[idx] = 0
         self.d_x = tmp
         return self.d_x
@@ -96,7 +106,8 @@ class SoftmaxCrossEntropy(object):
         return "Softmax Cross Entropy layer: {} => {} => {}".format(x_shape, y_shape, loss_shape)
 
     def forward(self, x_batch, t_batch):
-        self.x = x_batch.copy()
+        # self.x = x_batch.copy()
+        self.x = x_batch
         self.t = t_batch
         self.y = functions.softmax(self.x)
         self.loss = functions.cross_entropy(self.y, self.t)
