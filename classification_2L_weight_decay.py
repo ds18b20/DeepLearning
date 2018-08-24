@@ -99,7 +99,7 @@ def show_accuracy_loss(train_acc, test_acc, loss):
 
 
 if __name__ == '__main__':
-    mnist = datasets.MNIST()
+    mnist = datasets.MNIST('datasets\\mnist')
     train_x, train_t, test_x, test_t = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
     # reduce training data count to N
     N = 100

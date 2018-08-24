@@ -1,7 +1,90 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+import logging; logging.basicConfig(level=logging.INFO)
 import struct
 import numpy as np
+import os
+import platform
+from six.moves import cPickle as pickle
+from util import im2col, show_img
+
+"""
+The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes, with 6000 images per class.
+There are 50000 training images and 10000 test images. 
+
+The dataset is divided into five training batches and one test batch, each with 10000 images.
+The test batch contains exactly 1000 randomly-selected images from each class. The training batches contain the remaining images in random order, but some training batches may contain more images from one class than another. Between them, the training batches contain exactly 5000 images from each class. 
+"""
+class CIFAR10(object):
+    def __init__(self, root):
+        """
+        initialize CIFAR Loader with file path.
+        root: file path
+        """
+        self.root = root
+        self.category_list = np.array(['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck'])
+
+    def load_pickle(self, f):
+        version = platform.python_version_tuple()
+        if version[0] == '2':
+            return  pickle.load(f)
+        elif version[0] == '3':
+            return  pickle.load(f, encoding='latin1')
+        raise ValueError("invalid python version: {}".format(version))
+
+    def load_CIFAR_batch(self, filename):
+      """ load single batch of cifar """
+      with open(filename, 'rb') as f:
+        datadict = self.load_pickle(f)
+        X = datadict['data']  # --> numpy.ndarray
+        Y = datadict['labels']  # --> list
+        # X = X.reshape(10000, 3, 32, 32).transpose(0,2,3,1).astype("float")  # float == float64(8 bytes)
+        # X = X.reshape(10000, 3, 32, 32).transpose(0,2,3,1).astype("float32")  # float32(4 bytes)
+        X = X.reshape(10000, 3, 32, 32).astype("float32")  # float32(4 bytes)
+        Y = np.array(Y)
+        return X, Y
+
+    def load_CIFAR10(self, normalize=True):
+        """ load all of cifar """
+        xs = []
+        ys = []
+        for b in range(1,6):
+            f = os.path.join(self.root, 'data_batch_%d' % (b, ))
+            X, Y = self.load_CIFAR_batch(f)
+            xs.append(X)
+            ys.append(Y)    
+            Xtr = np.concatenate(xs)
+            Ytr = np.concatenate(ys)
+        del X, Y
+        Xte, Yte = self.load_CIFAR_batch(os.path.join(self.root, 'test_batch'))
+        if normalize:
+            Xtr = Xtr / 255.0
+            Xte = Xte / 255.0
+        return Xtr, Ytr, Xte, Yte
+
+      
+    def load_CIFAR10_batch_one(self, normalize=True):
+        """ load cifar train_batch_1 & test_batch"""
+        xs = []
+        ys = []
+
+        f = os.path.join(self.root, 'data_batch_%d' % (1, ))
+        X, Y = self.load_CIFAR_batch(f)
+
+        Xtr = X
+        Ytr = Y
+        del X, Y
+        Xte, Yte = self.load_CIFAR_batch(os.path.join(self.root, 'test_batch'))
+        if normalize:
+            Xtr = Xtr / 255.0
+            Xte = Xte / 255.0
+        return Xtr, Ytr, Xte, Yte
+      
+    def index2name(self, index):
+        try:
+            return self.category_list[index]
+        except:
+            pass
 """
 TEST SET IMAGE FILE (t10k-images-idx3-ubyte):
 [offset] [type]          [value]          [description]
@@ -59,12 +142,13 @@ class Loader(object):
 
             
 class MNIST(Loader):
-    def __init__(self):
+    def __init__(self, root):
         super(MNIST, self).__init__()
-        self.train_image_path = 'data/train-images.idx3-ubyte'
-        self.train_label_path = 'data/train-labels.idx1-ubyte'
-        self.test_image_path = 'data/t10k-images.idx3-ubyte'
-        self.test_label_path = 'data/t10k-labels.idx1-ubyte'
+        self.root = root
+        self.train_image_path = os.path.join(self.root, 'train-images.idx3-ubyte')
+        self.train_label_path = os.path.join(self.root, 'train-labels.idx1-ubyte')
+        self.test_image_path = os.path.join(self.root, 't10k-images.idx3-ubyte')
+        self.test_label_path = os.path.join(self.root, 't10k-labels.idx1-ubyte')
         
     def load(self, normalize=True, image_flat=False, label_one_hot=False):
         train_image = self.load_raw(self.train_image_path)
@@ -118,9 +202,26 @@ def get_one_batch(image_set, label_set, batch_size=100):
 
 
 if __name__ == '__main__':
-    mnist = MNIST()
+    """
+    mnist = MNIST('datasets/mnist')
     # train_x, train_y, test_x, test_y = mnist.load(image_flat=False, label_one_hot=False)
     train_x, train_y, test_x, test_y = mnist.load(image_flat=True, label_one_hot=True)
-    print('train shape: {}{}, test shape: {}{}'.format(train_x.shape, train_y.shape, test_x.shape, test_y.shape))
+    logging.info('train shape: {}{}, test shape: {}{}'.format(train_x.shape, train_y.shape, test_x.shape, test_y.shape))
     train_x_batch, train_y_batch = get_one_batch(train_x, train_y)
-    print('batch train shape: {}{}'.format(train_x_batch.shape, train_y_batch.shape))
+    logging.info('batch train shape: {}{}'.format(train_x_batch.shape, train_y_batch.shape))
+    """
+    cifar10 = CIFAR10('datasets/cifar10')
+    train_x, train_y, test_x, test_y = cifar10.load_CIFAR10_batch_one(normalize=True)
+    logging.info('train_x shape: {}'.format(train_x.shape))
+    logging.info('train_y shape: {}'.format(train_y.shape))
+    logging.info('test_x shape: {}'.format(test_x.shape))
+    logging.info('test_y shape:: {}'.format(test_y.shape))
+    imgs = train_x[0:10].transpose(0,2,3,1)
+    sm = show_img()
+    sm.__next__()
+    for i in imgs:
+        print(i.shape)
+        print(i.dtype)
+        print("***")
+        sm.send(i)
+        
