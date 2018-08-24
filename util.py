@@ -1,14 +1,15 @@
 # coding: utf-8
 # Reference: https://github.com/oreilly-japan/deep-learning-from-scratch
+import logging; logging.basicConfig(level=logging.INFO)
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 
 def show_imgs(images, titles):
+    logging.info('show images:{}'.format(titles))
     n = images.shape[0]
     # _, figs = plt.subplots(1, n, figsize=(15, 15))
     _, figs = plt.subplots(1, n)
-    logging.info(train_y[0:3])
     for i in range(n):
         figs[i].imshow(images[i])
         figs[i].axes.get_xaxis().set_visible(False)
@@ -18,14 +19,14 @@ def show_imgs(images, titles):
     
 def show_img(window_title = "log"):
     """
+    coroutine
     Show images in new window
     """
     while True:
-        screen = (yield)
+        image, label = (yield)
         cv2.namedWindow(window_title, cv2.WINDOW_NORMAL)
-        # imS = cv2.resize(screen, (800, 400))
-        cv2.imshow(window_title, screen)
-        cv2.waitKey(0)
+        cv2.imshow(window_title, image)
+        cv2.waitKey(0)  # pause here
         if (cv2.waitKey(1) & 0xFF == ord('q')):
             cv2.destroyAllWindows()
             break

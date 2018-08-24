@@ -6,7 +6,7 @@ import numpy as np
 import os
 import platform
 from six.moves import cPickle as pickle
-from util import im2col, show_img
+from util import im2col, show_img, show_imgs
 
 """
 The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes, with 6000 images per class.
@@ -46,6 +46,7 @@ class CIFAR10(object):
 
     def load_CIFAR10(self, normalize=True):
         """ load all of cifar """
+        logging.info('cifar10 load all batches: normalize={}'.format(normalize))
         xs = []
         ys = []
         for b in range(1,6):
@@ -65,6 +66,7 @@ class CIFAR10(object):
       
     def load_CIFAR10_batch_one(self, normalize=True):
         """ load cifar train_batch_1 & test_batch"""
+        logging.info('cifar10 load batch_one: normalize={}'.format(normalize))
         xs = []
         ys = []
 
@@ -151,6 +153,7 @@ class MNIST(Loader):
         self.test_label_path = os.path.join(self.root, 't10k-labels.idx1-ubyte')
         
     def load(self, normalize=True, image_flat=False, label_one_hot=False):
+        logging.info('mnist load data: normalize={}, image_flat={}, label_one_hot={}').format(normalize, image_flat, label_one_hot)
         train_image = self.load_raw(self.train_image_path)
         train_label = self.load_raw(self.train_label_path)
         test_image = self.load_raw(self.test_image_path)
@@ -216,12 +219,11 @@ if __name__ == '__main__':
     logging.info('train_y shape: {}'.format(train_y.shape))
     logging.info('test_x shape: {}'.format(test_x.shape))
     logging.info('test_y shape:: {}'.format(test_y.shape))
-    imgs = train_x[0:10].transpose(0,2,3,1)
-    sm = show_img()
+    n = 10
+    images = train_x[0:n].transpose(0,2,3,1)
+    labels = train_y[0:n]
+    sm = show_img()  # coroutine by generator
     sm.__next__()
-    for i in imgs:
-        print(i.shape)
-        print(i.dtype)
-        print("***")
-        sm.send(i)
-        
+    for i in range(n):
+        sm.send((images[i], labels[i]))
+    show_imgs(images, cifar10.index2name(labels))
