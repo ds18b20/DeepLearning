@@ -4,116 +4,38 @@ import logging; logging.basicConfig(level=logging.INFO)
 import struct
 import numpy as np
 import os
-import platform
-from six.moves import cPickle as pickle
-from util import im2col, show_img, show_imgs
+from util import im2col, show_img, show_imgs, load_pickle, one_hot, get_one_batch, label2name
 
-"""
-The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes, with 6000 images per class.
-There are 50000 training images and 10000 test images. 
+mnist_fashion_name_list = [
+        't-shirt', 'trouser', 'pullover', 'dress', 'coat',
+        'sandal', 'shirt', 'sneaker', 'bag', 'ankle boot'
+    ]
 
-The dataset is divided into five training batches and one test batch, each with 10000 images.
-The test batch contains exactly 1000 randomly-selected images from each class. The training batches contain the remaining images in random order, but some training batches may contain more images from one class than another. Between them, the training batches contain exactly 5000 images from each class. 
-"""
-class CIFAR10(object):
-    def __init__(self, root):
-        """
-        initialize CIFAR Loader with file path.
-        root: file path
-        """
-        self.root = root
-        self.category_list = np.array(['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck'])
 
-    def load_pickle(self, f):
-        version = platform.python_version_tuple()
-        if version[0] == '2':
-            return  pickle.load(f)
-        elif version[0] == '3':
-            return  pickle.load(f, encoding='latin1')
-        raise ValueError("invalid python version: {}".format(version))
-
-    def load_CIFAR_batch(self, filename):
-      """ load single batch of cifar """
-      with open(filename, 'rb') as f:
-        datadict = self.load_pickle(f)
-        X = datadict['data']  # --> numpy.ndarray
-        Y = datadict['labels']  # --> list
-        # X = X.reshape(10000, 3, 32, 32).transpose(0,2,3,1).astype("float")  # float == float64(8 bytes)
-        # X = X.reshape(10000, 3, 32, 32).transpose(0,2,3,1).astype("float32")  # float32(4 bytes)
-        X = X.reshape(10000, 3, 32, 32).astype("float32")  # float32(4 bytes)
-        Y = np.array(Y)
-        return X, Y
-
-    def load_CIFAR10(self, normalize=True):
-        """ load all of cifar """
-        logging.info('cifar10 load all batches: normalize={}'.format(normalize))
-        xs = []
-        ys = []
-        for b in range(1,6):
-            f = os.path.join(self.root, 'data_batch_%d' % (b, ))
-            X, Y = self.load_CIFAR_batch(f)
-            xs.append(X)
-            ys.append(Y)    
-            Xtr = np.concatenate(xs)
-            Ytr = np.concatenate(ys)
-        del X, Y
-        Xte, Yte = self.load_CIFAR_batch(os.path.join(self.root, 'test_batch'))
-        if normalize:
-            Xtr = Xtr / 255.0
-            Xte = Xte / 255.0
-        return Xtr, Ytr, Xte, Yte
-
-      
-    def load_CIFAR10_batch_one(self, normalize=True):
-        """ load cifar train_batch_1 & test_batch"""
-        logging.info('cifar10 load batch_one: normalize={}'.format(normalize))
-        xs = []
-        ys = []
-
-        f = os.path.join(self.root, 'data_batch_%d' % (1, ))
-        X, Y = self.load_CIFAR_batch(f)
-
-        Xtr = X
-        Ytr = Y
-        del X, Y
-        Xte, Yte = self.load_CIFAR_batch(os.path.join(self.root, 'test_batch'))
-        if normalize:
-            Xtr = Xtr / 255.0
-            Xte = Xte / 255.0
-        return Xtr, Ytr, Xte, Yte
-      
-    def index2name(self, index):
-        try:
-            return self.category_list[index]
-        except:
-            pass
-"""
-TEST SET IMAGE FILE (t10k-images-idx3-ubyte):
-[offset] [type]          [value]          [description]
-0000     32 bit integer  0x00000803(2051) magic number
-0004     32 bit integer  10000            number of images
-0008     32 bit integer  28               number of rows
-0012     32 bit integer  28               number of columns
-0016     unsigned byte   ??               pixel
-0017     unsigned byte   ??               pixel
-........
-xxxx     unsigned byte   ??               pixel
-Pixels are organized row-wise. Pixel values are 0 to 255. 0 means background (white), 255 means foreground (black).
-"""
-"""
-TEST SET LABEL FILE (t10k-labels-idx1-ubyte):
-[offset] [type]          [value]          [description]
-0000     32 bit integer  0x00000801(2049) magic number (MSB first)
-0004     32 bit integer  10000            number of items
-0008     unsigned byte   ??               label
-0009     unsigned byte   ??               label
-........
-xxxx     unsigned byte   ??               label
-The labels values are 0 to 9.
-"""
-
-# basic class for loading data
 class Loader(object):
+    """
+    TEST SET IMAGE FILE (t10k-images-idx3-ubyte):
+    [offset] [type]          [value]          [description]
+    0000     32 bit integer  0x00000803(2051) magic number
+    0004     32 bit integer  10000            number of images
+    0008     32 bit integer  28               number of rows
+    0012     32 bit integer  28               number of columns
+    0016     unsigned byte   ??               pixel
+    0017     unsigned byte   ??               pixel
+    ........
+    xxxx     unsigned byte   ??               pixel
+    Pixels are organized row-wise. Pixel values are 0 to 255. 0 means background (white), 255 means foreground (black).
+    --- *** ---
+    TEST SET LABEL FILE (t10k-labels-idx1-ubyte):
+    [offset] [type]          [value]          [description]
+    0000     32 bit integer  0x00000801(2049) magic number (MSB first)
+    0004     32 bit integer  10000            number of items
+    0008     unsigned byte   ??               label
+    0009     unsigned byte   ??               label
+    ........
+    xxxx     unsigned byte   ??               label
+    The labels values are 0 to 9.
+    """
     def __init__(self):
         """
         initialize Loader
@@ -174,37 +96,185 @@ class MNIST(Loader):
         return train_image, train_label, test_image, test_label
 
 
-def one_hot(vec, length=10):
+class CIFAR10(object):
     """
-    (vec_count, )-->(vec_count, length)
-    """
-    row_count = len(vec)
-    column_count = length
+    The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes, with 6000 images per class.
+    There are 50000 training images and 10000 test images.
 
-    label_one_hot = np.zeros((row_count, column_count))
-    label_one_hot[range(row_count), vec] = 1
-    
-    return label_one_hot
-    
+    The dataset is divided into five training batches and one test batch, each with 10000 images.
+    The test batch contains exactly 1000 randomly-selected images from each class. The training batches contain the remaining images in random order, but some training batches may contain more images from one class than another. Between them, the training batches contain exactly 5000 images from each class.
+    """
 
-def labels_to_text(labels):
-    text_labels = [
-        't-shirt', 'trouser', 'pullover', 'dress', 'coat',
-        'sandal', 'shirt', 'sneaker', 'bag', 'ankle boot'
-    ]
-    return [text_labels[int(i)] for i in labels]
-    
-    
-def get_one_batch(image_set, label_set, batch_size=100):
+    def __init__(self, root):
+        """
+        initialize CIFAR Loader with file path.
+        root: file path
+        """
+        self.root = root
+        self.data_mata = 'batches.meta'
+        self.data_batch_file_list = [('data_batch_%d' % idx) for idx in range(1, 6)]
+        self.test_batch_file = 'test_batch'
+        self.category_list = np.array(
+            ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck'])
+
+    def _load_data(self, filename):
+        """
+        load single batch of cifar10
+        :param filename: file name to load
+        :return:
+        """
+        with open(filename, 'rb') as f:
+            datadict = load_pickle(f)
+            logging.info('dict keys: {}'.format(datadict.keys()))
+
+            data = datadict['data']  # --> numpy.ndarray
+            data = data.reshape(-1, 3, 32, 32).astype("float32")  # float32(4 bytes)
+
+            labels = np.array(datadict['labels'])  # convert list to numpy.ndarray
+
+            return data, labels
+
+    def load_cifar10(self, normalize=True):
+        """
+        load all of cifar10 dataset
+        :param normalize: [0, 255] to [0, 1]
+        :return:
+        """
+        logging.info('cifar10 load all batches: normalize={}'.format(normalize))
+
+        # load training data
+        xs = []
+        ys = []
+        x = None
+        y = None
+        file_path_list = [os.path.join(self.root, fn) for fn in self.data_batch_file_list]
+        for file_path in file_path_list:
+            x, y = self._load_data(file_path)
+            xs.append(x)
+            ys.append(y)
+        train_image = np.concatenate(xs)
+        train_label = np.concatenate(ys)
+        del x, y
+
+        # load test data
+        test_image, test_label = self._load_data(os.path.join(self.root, self.test_batch_file))
+
+        # data processing
+        if normalize:
+            train_image = train_image / 255.0
+            test_image = test_image / 255.0
+
+        logging.info('train_image shape: {}'.format(train_image.shape))
+        logging.info('train_label shape: {}'.format(train_image.shape))
+        logging.info('test_image shape: {}'.format(test_image.shape))
+        logging.info('test_label shape: {}'.format(test_label.shape))
+        return train_image, train_label, test_image, test_label
+
+    def load_cifar10_batch_one(self, normalize=True):
+        """
+        load cifar train_batch_1 & test_batch
+        :param normalize: [0, 255] to [0, 1]
+        :return:
+        """
+        logging.info('cifar10 load batch_one: normalize={}'.format(normalize))
+
+        # load training data
+        f = os.path.join(self.root, 'data_batch_%d' % (1,))
+        train_image, train_label = self._load_data(f)
+
+        # load test data
+        test_image, test_label = self._load_data(os.path.join(self.root, 'test_batch'))
+
+        # data processing
+        if normalize:
+            train_image = train_image / 255.0
+            test_image = test_image / 255.0
+        return train_image, train_label, test_image, test_label
+
+
+class CIFAR100(object):
     """
-    get batch data
+    The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes, with 6000 images per class.
+    There are 50000 training images and 10000 test images.
+
+    The dataset is divided into five training batches and one test batch, each with 10000 images.
+    The test batch contains exactly 1000 randomly-selected images from each class. The training batches contain the remaining images in random order, but some training batches may contain more images from one class than another. Between them, the training batches contain exactly 5000 images from each class.
     """
-    set_size = len(image_set)
-    index = np.random.choice(set_size, batch_size)
-    return image_set[index], label_set[index]
+
+    def __init__(self, root):
+        """
+        initialize CIFAR Loader with file path.
+        root: file path
+        """
+        self.root = root
+        self.data_mata = 'meta'
+        self.train_batch_file = 'train'
+        self.test_batch_file = 'test'
+        self.fine_label_names = None
+        self.coarse_label_names = None
+        self.load_meta()
+
+    def _extract_meta(self, filename):
+        """
+        extract meta data
+        :param filename:
+        :return:
+        """
+        with open(filename, 'rb') as f:
+            meta_dict = load_pickle(f)
+            logging.info('dict keys: {}'.format(meta_dict.keys()))
+            self.fine_label_names = np.array(meta_dict['fine_label_names'])  # convert list to numpy.ndarray
+            self.coarse_label_names = np.array(meta_dict['coarse_label_names'])  # convert list to numpy.ndarray
+
+    def load_meta(self,):
+        self._extract_meta(os.path.join(self.root, self.data_mata))
+
+    def _load_data(self, filename):
+        """
+        load single batch of cifar10
+        :param filename: file name to load
+        :return:
+        """
+        with open(filename, 'rb') as f:
+            datadict = load_pickle(f)
+            logging.info('dict keys: {}'.format(datadict.keys()))
+
+            data = datadict['data']  # --> numpy.ndarray
+            data = data.reshape(-1, 3, 32, 32).astype("float32")  # float32(4 bytes)
+
+            fine_labels = np.array(datadict['fine_labels'])  # convert list to numpy.ndarray
+            coarse_labels = np.array(datadict['coarse_labels'])  # convert list to numpy.ndarray
+
+            return data, fine_labels, coarse_labels
+
+    def load_cifar100(self, normalize=True):
+        """
+        load all of cifar100 dataset
+        :param normalize: [0, 255] to [0, 1]
+        :return:
+        """
+        logging.info('cifar100 load all batches: normalize={}'.format(normalize))
+
+        # load training data
+        train_image, train_label, _ = self._load_data(os.path.join(self.root, self.train_batch_file))
+
+        # load test data
+        test_image, test_label, _ = self._load_data(os.path.join(self.root, self.test_batch_file))
+
+        # data processing
+        if normalize:
+            train_image = train_image / 255.0
+            test_image = test_image / 255.0
+
+        logging.info('train_image shape: {}'.format(train_image.shape))
+        logging.info('train_label shape: {}'.format(train_image.shape))
+        logging.info('test_image shape: {}'.format(test_image.shape))
+        logging.info('test_label shape: {}'.format(test_label.shape))
+        return train_image, train_label, test_image, test_label
 
 
 if __name__ == '__main__':
+    # test MNIST
     """
     mnist = MNIST('datasets/mnist')
     # train_x, train_y, test_x, test_y = mnist.load(image_flat=False, label_one_hot=False)
@@ -213,17 +283,31 @@ if __name__ == '__main__':
     train_x_batch, train_y_batch = get_one_batch(train_x, train_y)
     logging.info('batch train shape: {}{}'.format(train_x_batch.shape, train_y_batch.shape))
     """
+
+    # test CIFAR10
+    """
     cifar10 = CIFAR10('datasets/cifar10')
-    train_x, train_y, test_x, test_y = cifar10.load_CIFAR10_batch_one(normalize=True)
-    logging.info('train_x shape: {}'.format(train_x.shape))
-    logging.info('train_y shape: {}'.format(train_y.shape))
-    logging.info('test_x shape: {}'.format(test_x.shape))
-    logging.info('test_y shape:: {}'.format(test_y.shape))
+    train_x, train_y, test_x, test_y = cifar10.load_cifar10_batch_one(normalize=True)
+
     n = 10
-    images = train_x[0:n].transpose(0,2,3,1)
+    images = train_x[0:n].transpose(0, 2, 3, 1)
     labels = train_y[0:n]
     sm = show_img()  # coroutine by generator
     sm.__next__()
     for i in range(n):
         sm.send((images[i], labels[i]))
-    show_imgs(images, cifar10.index2name(labels))
+    show_imgs(images, cifar10.label2text(labels))
+    """
+
+    # test CIFAR100
+    cifar100 = CIFAR100('datasets/cifar100')
+    train_x, train_y, test_x, test_y = cifar100.load_cifar100()
+
+    n = 10
+    images = train_x[0:n].transpose(0, 2, 3, 1)
+    labels = train_y[0:n]
+    sm = show_img()  # coroutine by generator
+    sm.__next__()
+    for i in range(n):
+        sm.send((images[i], labels[i]))
+    show_imgs(images, label2name(index_array=labels, label_array=cifar100.fine_label_names))

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+import logging; logging.basicConfig(level=logging.INFO)
 import matplotlib.pyplot as plt
 import numpy as np
 from selenium import webdriver
@@ -18,10 +19,11 @@ def timeit(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         start_time = time.time()
-        func(*args, **kwargs)
+        ret = func(*args, **kwargs)
         elapsed_time = time.time() - start_time
         print('function [{}] finished in {} ms'.format(
             func.__name__, int(elapsed_time * 1000)))
+        return ret
     return wrapper
 
 
@@ -99,6 +101,7 @@ class Game(object):
     def end(self):
         self._driver.close()
 
+    @timeit
     def screen_capture(self):
         image_b64 = self._driver.execute_script(getbase64Script)
         image = np.array(Image.open(BytesIO(base64.b64decode(image_b64))))
@@ -127,8 +130,8 @@ class Game_sate:
     def __init__(self, agent, game):
         self._agent = agent
         self._game = game
-        self._display = show_img()  # display the processed image on screen using openCV, implemented using python coroutine
-        self._display.__next__()  # initiliaze the display coroutine
+        self._display = show_img()  # display the processed image on screen using openCV
+        self._display.__next__()  # initialize the display coroutine
 
     # def get_state(self, actions):
     #     actions_df.loc[len(actions_df)] = actions[1]  # storing actions in a dataframe
@@ -186,16 +189,18 @@ def show_img(graphs=False):
 
 if __name__ == "__main__":
     game = Game()
+    game.press_up()
+
+    # init a coroutine for showing images
     coroutines = show_img()
     coroutines.__next__()
-
     while True:
         # read from canvas
         img = game.screen_capture()
-        print("raw data shape: {}".format(img.shape))
+        logging.info("raw data shape: {}".format(img.shape))
 
         # send new image data to coroutine
         img = process_img(img)
-        print("processed data shape: {}".format(img.shape))
+        logging.info("processed data shape: {}".format(img.shape))
 
         coroutines.send(img)

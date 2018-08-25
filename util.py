@@ -4,6 +4,48 @@ import logging; logging.basicConfig(level=logging.INFO)
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
+import platform
+from six.moves import cPickle as pickle
+
+
+def one_hot(vec, class_num=10):
+    """
+    (vec_count, )-->(vec_count, length)
+    """
+    row_count = len(vec)
+    column_count = class_num
+
+    label_one_hot = np.zeros((row_count, column_count))
+    label_one_hot[range(row_count), vec] = 1
+
+    return label_one_hot
+
+
+def get_one_batch(image_set, label_set, batch_size=100):
+    """
+    get batch data
+    """
+    set_size = len(image_set)
+    index = np.random.choice(set_size, batch_size)
+    return image_set[index], label_set[index]
+
+
+def label2name(index_array, label_array):
+    try:
+        return label_array[index_array]
+    except TypeError:
+        print("Please check index type.")
+
+
+def load_pickle(f, encoding='latin1'):
+    version = platform.python_version_tuple()
+    logging.info('Python version={}'.format(version[0]))
+    if version[0] == '2':
+        return pickle.load(f)
+    elif version[0] == '3':
+        return pickle.load(f, encoding=encoding)
+    raise ValueError("invalid python version: {}".format(version))
+
 
 def show_imgs(images, titles):
     logging.info('show images:{}'.format(titles))
@@ -16,8 +58,9 @@ def show_imgs(images, titles):
         figs[i].axes.get_yaxis().set_visible(False)
         figs[i].axes.set_title(titles[i])
     plt.show()
-    
-def show_img(window_title = "log"):
+
+
+def show_img(window_title="log"):
     """
     coroutine
     Show images in new window
@@ -27,10 +70,11 @@ def show_img(window_title = "log"):
         cv2.namedWindow(window_title, cv2.WINDOW_NORMAL)
         cv2.imshow(window_title, image)
         cv2.waitKey(0)  # pause here
-        if (cv2.waitKey(1) & 0xFF == ord('q')):
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             cv2.destroyAllWindows()
             break
-    
+
+
 def smooth_curve(x):
     """損失関数のグラフを滑らかにするために用いる
     Use covolution to smooth input data
@@ -56,10 +100,11 @@ def shuffle_dataset(x, t):
     x, t : シャッフルを行った訓練データと教師データ
     """
     permutation = np.random.permutation(x.shape[0])
-    x = x[permutation,:] if x.ndim == 2 else x[permutation,:,:,:]
+    x = x[permutation, :] if x.ndim == 2 else x[permutation, :, :, :]
     t = t[permutation]
 
     return x, t
+
 
 def conv_output_size(input_size, filter_size, stride=1, pad=0):
     return (input_size + 2*pad - filter_size) / stride + 1

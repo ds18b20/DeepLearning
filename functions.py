@@ -22,7 +22,8 @@ def cross_entropy(y_hat, y):
 def accuracy(y_hat: np.array, y: np.array):
     tmp = y_hat.argmax(axis=1) == y  # type: np.ndarray
     return np.mean(tmp)
-    
+
+
 def check_is_ndarray(input_array):
     try:
         return isinstance(input_array, np.ndarray)  # or use: hasattr(input_array, shape)
