@@ -4,7 +4,7 @@ import logging; logging.basicConfig(level=logging.INFO)
 import struct
 import numpy as np
 import os
-from util import im2col, show_img, show_imgs, load_pickle, one_hot, get_one_batch, label2name
+from util import show_img, show_imgs, load_pickle, one_hot, label2name
 
 mnist_fashion_name_list = [
         't-shirt', 'trouser', 'pullover', 'dress', 'coat',
