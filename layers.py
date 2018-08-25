@@ -4,7 +4,8 @@ import numpy as np
 
 import datasets
 import functions
-import util
+from util import im2col, col2im, one_hot
+
 
 class Affine(object):
     def __init__(self, weights, bias):
@@ -111,14 +112,14 @@ class SoftmaxCrossEntropy(object):
     def backward(self, d_y=1):
         assert self.t.ndim == 1
         batch_size = self.y.shape[0]
-        self.d_x = (self.y - datasets.one_hot(self.t)) / batch_size  # fix here: (y - t) / batch
+        self.d_x = (self.y - one_hot(self.t)) / batch_size  # fix here: (y - t) / batch
         return d_y * self.d_x
 
 
 class Convolution:
-    def __init__(self, W, b, stride=1, pad=0):
-        self.W = W
-        self.b = b
+    def __init__(self, weights, bias, stride=1, pad=0):
+        self.W = weights
+        self.b = bias
         self.stride = stride
         self.pad = pad
         
@@ -151,7 +152,7 @@ class Convolution:
 
     def backward(self, dout):
         FN, C, FH, FW = self.W.shape
-        dout = dout.transpose(0,2,3,1).reshape(-1, FN)
+        dout = dout.transpose(0, 2, 3, 1).reshape(-1, FN)
 
         self.db = np.sum(dout, axis=0)
         self.dW = np.dot(self.col.T, dout)
