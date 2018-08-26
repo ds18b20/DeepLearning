@@ -63,13 +63,12 @@ def show_accuracy_loss(train_acc, test_acc, loss):
 def show_imgs(images, titles):
     logging.info('images shape: {}'.format(images.shape))
     logging.info('image titles: {}'.format(titles))
-    if images.ndim == 4 and images.shape[1] == 1:
-        images_show = np.squeeze(images, axis=(1,))
+    if images.ndim == 4 and images.shape[3] == 1:
+        images_show = np.squeeze(images, axis=(3,))
     else:
         images_show = images
     logging.info('show images shape: {}'.format(images_show.shape))
     logging.info('show images dtype: {}'.format(images_show.dtype))
-    assert images_show.ndim == 3
     n = images_show.shape[0]
     # _, figs = plt.subplots(1, n, figsize=(15, 15))
     _, figs = plt.subplots(1, n)

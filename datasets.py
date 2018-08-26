@@ -4,7 +4,7 @@ import logging; logging.basicConfig(level=logging.INFO)
 import struct
 import numpy as np
 import os
-from util import show_img, show_imgs, load_pickle, one_hot, label2name
+from util import show_img, show_imgs, load_pickle, one_hot, label2name, get_one_batch
 
 mnist_fashion_name_list = ['t-shirt', 'trouser', 'pullover', 'dress', 'coat',
                            'sandal', 'shirt', 'sneaker', 'bag', 'ankle boot']
@@ -35,16 +35,9 @@ class Loader(object):
     The labels values are 0 to 9.
     """
     def __init__(self):
-        """
-        initialize Loader
-        path: file path
-        count: sample count
-        data_type: data type
-        dims: data dimensions
-        """
-        self.data_type = None
-        self.dims = None
-        self.shape = None
+        self.raw_data_type = None
+        self.raw_dims = None
+        self.raw_shape = None
 
     def load_raw(self, path):
         """ A function that can read MNIST's idx file format into numpy arrays.
@@ -56,9 +49,9 @@ class Loader(object):
         https://gist.github.com/tylerneylon/ce60e8a06e7506ac45788443f7269e40
         """
         with open(path, 'rb') as f:
-            zero, self.data_type, self.dims = struct.unpack('>HBB', f.read(4))
-            self.shape = tuple(struct.unpack('>I', f.read(4))[0] for _ in range(self.dims))
-            return np.frombuffer(f.read(), dtype=np.uint8).reshape(self.shape)
+            zero, self.raw_data_type, self.raw_dims = struct.unpack('>HBB', f.read(4))
+            self.raw_shape = tuple(struct.unpack('>I', f.read(4))[0] for _ in range(self.raw_dims))
+            return np.frombuffer(f.read(), dtype=np.uint8).reshape(self.raw_shape)  # count, H, W
 
 
 class MNIST(Loader):
@@ -72,9 +65,9 @@ class MNIST(Loader):
         
     def load(self, normalize=True, image_flat=False, label_one_hot=False):
         logging.info('mnist load data: normalize={}, image_flat={}, label_one_hot={}'.format(normalize, image_flat, label_one_hot))
-        train_image = self.load_raw(self.train_image_path).reshape(-1, 1, 28, 28)
+        train_image = self.load_raw(self.train_image_path).reshape(-1, 1, 28, 28)  # count, channel=1, H, W
         train_label = self.load_raw(self.train_label_path)
-        test_image = self.load_raw(self.test_image_path).reshape(-1, 1, 28, 28)
+        test_image = self.load_raw(self.test_image_path).reshape(-1, 1, 28, 28)  # count, channel=1, H, W
         test_label = self.load_raw(self.test_label_path)
         
         if normalize:
@@ -110,8 +103,8 @@ class CIFAR10(object):
         self.data_mata = 'batches.meta'
         self.data_batch_file_list = [('data_batch_%d' % idx) for idx in range(1, 6)]
         self.test_batch_file = 'test_batch'
-        self.category_list = np.array(
-            ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck'])
+        self.category_list = np.array(['airplane', 'automobile', 'bird', 'cat', 'deer',
+                                       'dog', 'frog', 'horse', 'ship', 'truck'])
 
     def _load_data(self, filename):
         """
@@ -212,7 +205,7 @@ class CIFAR100(object):
 
     def _extract_meta(self, filename):
         """
-        extract meta data
+        extract meta data: name list
         :param filename:
         :return:
         """
@@ -271,39 +264,35 @@ class CIFAR100(object):
 
 if __name__ == '__main__':
     # test MNIST
-    """
     mnist = MNIST('datasets/mnist')
-    # train_x, train_y, test_x, test_y = mnist.load(image_flat=False, label_one_hot=False)
-    train_x, train_y, test_x, test_y = mnist.load(image_flat=True, label_one_hot=True)
-    logging.info('train shape: {}{}, test shape: {}{}'.format(train_x.shape, train_y.shape, test_x.shape, test_y.shape))
-    train_x_batch, train_y_batch = get_one_batch(train_x, train_y)
-    logging.info('batch train shape: {}{}'.format(train_x_batch.shape, train_y_batch.shape))
-    """
+    train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=False, label_one_hot=False)
+    train_x_batch, train_y_batch = get_one_batch(train_x, train_y, batch_size=10)
+    logging.info('batch train shape: {}'.format(train_x_batch.shape))
+    logging.info('batch test shape: {}'.format(train_y_batch.shape))
+    show_imgs(train_x_batch.transpose(0, 2, 3, 1), train_y_batch)
 
-    # test CIFAR10
-    """
-    cifar10 = CIFAR10('datasets/cifar10')
-    train_x, train_y, test_x, test_y = cifar10.load_cifar10_batch_one(normalize=True)
+    # # test CIFAR10
+    # cifar10 = CIFAR10('datasets/cifar10')
+    # train_x, train_y, test_x, test_y = cifar10.load_cifar10_batch_one(normalize=True)
+    #
+    # n = 10
+    # images = train_x[0:n].transpose(0, 2, 3, 1)
+    # labels = train_y[0:n]
+    # sm = show_img()  # coroutine by generator
+    # sm.__next__()
+    # for i in range(n):
+    #     sm.send((images[i], labels[i]))
+    # show_imgs(images, cifar10.label2text(labels))
 
-    n = 10
-    images = train_x[0:n].transpose(0, 2, 3, 1)
-    labels = train_y[0:n]
-    sm = show_img()  # coroutine by generator
-    sm.__next__()
-    for i in range(n):
-        sm.send((images[i], labels[i]))
-    show_imgs(images, cifar10.label2text(labels))
-    """
-
-    # test CIFAR100
-    cifar100 = CIFAR100(r'datasets/cifar100')
-    train_x, train_y, test_x, test_y = cifar100.load_cifar100()
-
-    n = 10
-    images = train_x[0:n].transpose(0, 2, 3, 1)
-    labels = train_y[0:n]
-    sm = show_img()  # coroutine by generator
-    sm.__next__()
-    for i in range(n):
-        sm.send((images[i], labels[i]))
-    show_imgs(images, label2name(index_array=labels, label_array=cifar100.fine_label_names))
+    # # test CIFAR100
+    # cifar100 = CIFAR100(r'datasets/cifar100')
+    # train_x, train_y, test_x, test_y = cifar100.load_cifar100()
+    #
+    # n = 10
+    # images = train_x[0:n].transpose(0, 2, 3, 1)
+    # labels = train_y[0:n]
+    # sm = show_img()  # coroutine by generator
+    # sm.__next__()
+    # for i in range(n):
+    #     sm.send((images[i], labels[i]))
+    # show_imgs(images, label2name(index_array=labels, label_array=cifar100.fine_label_names))
