@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+import logging; logging.basicConfig(level=logging.INFO)
 import numpy as np
-
-import datasets
 import functions
 from util import im2col, col2im, one_hot
 
@@ -16,8 +15,12 @@ class Affine(object):
 
         self.x = None
         self.y = None
-        
+        self.original_x_shape = None
+
         self.d_x = None
+
+        logging.info('Affine W shape: {}'.format(self.W.shape))
+        logging.info('Affine b shape: {}'.format(self.b.shape))
 
     def __str__(self):
         if hasattr(self.x, 'shape'):
@@ -31,15 +34,24 @@ class Affine(object):
         return ret_str
 
     def forward(self, x_batch):
+        # テンソル対応
+        self.original_x_shape = x_batch.shape
+        x = x_batch.reshape(x_batch.shape[0], -1)
         # self.x = x_batch.copy()
-        self.x = x_batch
+        self.x = x
+
+        logging.info('self.x shape: {}'.format(self.x.shape))
+        logging.info('self.W shape: {}'.format(self.W.shape))
         self.y = np.dot(self.x, self.W) + self.b
+
         return self.y
 
     def backward(self, d_y):
         self.d_x = np.dot(d_y, self.W.T)
         self.d_W = np.dot(self.x.T, d_y)
         self.d_b = np.sum(d_y, axis=0)
+        self.d_x = self.d_x.reshape(*self.original_x_shape)  # 入力データの形状に戻す（テンソル対応）
+
         return self.d_x
 
 
@@ -120,8 +132,8 @@ class Convolution:
     def __init__(self, weights, bias, stride=1, pad=0):
         self.W = weights
         self.b = bias
-        self.stride = stride
         self.pad = pad
+        self.stride = stride
         
         # 中間データ（backward時に使用）
         self.x = None   
@@ -129,8 +141,11 @@ class Convolution:
         self.col_W = None
         
         # 重み・バイアスパラメータの勾配
-        self.dW = None
-        self.db = None
+        self.d_W = None
+        self.d_b = None
+
+        logging.info('conv W shape: {}'.format(self.W.shape))
+        logging.info('conv b shape: {}'.format(self.b.shape))
 
     def forward(self, x):
         FN, C, FH, FW = self.W.shape
@@ -150,15 +165,15 @@ class Convolution:
 
         return out
 
-    def backward(self, dout):
+    def backward(self, d_y):
         FN, C, FH, FW = self.W.shape
-        dout = dout.transpose(0, 2, 3, 1).reshape(-1, FN)
+        d_y = d_y.transpose(0, 2, 3, 1).reshape(-1, FN)
 
-        self.db = np.sum(dout, axis=0)
-        self.dW = np.dot(self.col.T, dout)
-        self.dW = self.dW.transpose(1, 0).reshape(FN, C, FH, FW)
+        self.d_b = np.sum(d_y, axis=0)
+        self.d_W = np.dot(self.col.T, d_y)
+        self.d_W = self.d_W.transpose(1, 0).reshape(FN, C, FH, FW)
 
-        dcol = np.dot(dout, self.col_W.T)
+        dcol = np.dot(d_y, self.col_W.T)
         dx = col2im(dcol, self.x.shape, FH, FW, self.stride, self.pad)
 
         return dx
@@ -191,13 +206,13 @@ class Pooling:
 
         return out
 
-    def backward(self, dout):
-        dout = dout.transpose(0, 2, 3, 1)
+    def backward(self, d_y):
+        d_y = d_y.transpose(0, 2, 3, 1)
         
         pool_size = self.pool_h * self.pool_w
-        dmax = np.zeros((dout.size, pool_size))
-        dmax[np.arange(self.arg_max.size), self.arg_max.flatten()] = dout.flatten()
-        dmax = dmax.reshape(dout.shape + (pool_size,)) 
+        dmax = np.zeros((d_y.size, pool_size))
+        dmax[np.arange(self.arg_max.size), self.arg_max.flatten()] = d_y.flatten()
+        dmax = dmax.reshape(d_y.shape + (pool_size,)) 
         
         dcol = dmax.reshape(dmax.shape[0] * dmax.shape[1] * dmax.shape[2], -1)
         dx = col2im(dcol, self.x.shape, self.pool_h, self.pool_w, self.stride, self.pad)

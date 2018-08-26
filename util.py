@@ -47,13 +47,34 @@ def load_pickle(f, encoding='latin1'):
     raise ValueError("invalid python version: {}".format(version))
 
 
+def show_accuracy_loss(train_acc, test_acc, loss):
+    n = 2
+    _, figs = plt.subplots(1, n)
+    # fig[0]: train accuracy & test accuracy
+    figs[0].plot(train_acc, label='train accuracy')
+    figs[0].plot(test_acc, label='test accuracy')
+    figs[0].legend()
+    # fig[1]: loss
+    figs[1].plot(loss, label='loss')
+    figs[1].legend()
+    plt.show()
+
+
 def show_imgs(images, titles):
-    logging.info('show images:{}'.format(titles))
-    n = images.shape[0]
+    logging.info('images shape: {}'.format(images.shape))
+    logging.info('image titles: {}'.format(titles))
+    if images.ndim == 4 and images.shape[1] == 1:
+        images_show = np.squeeze(images, axis=(1,))
+    else:
+        images_show = images
+    logging.info('show images shape: {}'.format(images_show.shape))
+    logging.info('show images dtype: {}'.format(images_show.dtype))
+    assert images_show.ndim == 3
+    n = images_show.shape[0]
     # _, figs = plt.subplots(1, n, figsize=(15, 15))
     _, figs = plt.subplots(1, n)
     for i in range(n):
-        figs[i].imshow(images[i])
+        figs[i].imshow(images_show[i])
         figs[i].axes.get_xaxis().set_visible(False)
         figs[i].axes.get_yaxis().set_visible(False)
         figs[i].axes.set_title(titles[i])
@@ -129,9 +150,9 @@ def im2col(input_data, filter_h, filter_w, stride=1, pad=0):
     out_h = (H + 2*pad - filter_h)//stride + 1
     out_w = (W + 2*pad - filter_w)//stride + 1
 
-    img = np.pad(input_data, [(0,0), (0,0), (pad, pad), (pad, pad)], 'constant')
+    img = np.pad(input_data, [(0, 0), (0, 0), (pad, pad), (pad, pad)], 'constant')
     col = np.zeros((N, C, filter_h, filter_w, out_h, out_w))
-
+    logging.info("start im2col...")
     for y in range(filter_h):
         y_max = y + stride*out_h
         for x in range(filter_w):
@@ -139,6 +160,8 @@ def im2col(input_data, filter_h, filter_w, stride=1, pad=0):
             col[:, :, y, x, :, :] = img[:, :, y:y_max:stride, x:x_max:stride]
 
     col = col.transpose(0, 4, 5, 1, 2, 3).reshape(N*out_h*out_w, -1)
+    logging.info("col shape: {}".format(col.shape))
+
     return col
 
 
