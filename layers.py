@@ -4,7 +4,8 @@ import numpy as np
 
 import datasets
 import functions
-import util
+from util import im2col, col2im
+
 
 class Affine(object):
     def __init__(self, weights, bias):
@@ -151,7 +152,7 @@ class Convolution:
 
     def backward(self, dout):
         FN, C, FH, FW = self.W.shape
-        dout = dout.transpose(0,2,3,1).reshape(-1, FN)
+        dout = dout.transpose(0, 2, 3, 1).reshape(-1, FN)
 
         self.db = np.sum(dout, axis=0)
         self.dW = np.dot(self.col.T, dout)

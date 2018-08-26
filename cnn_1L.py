@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from collections import OrderedDict
 import layers
+from util import get_one_batch
 
 
-class TwoLayerNet(object):
+class TwoLayerCNN(object):
     def __init__(self, input_size, hidden_size, output_size):
         # init para
         weight_init_std = 0.01
@@ -105,7 +106,7 @@ if __name__ == '__main__':
     net = TwoLayerNet(input_size=28 * 28, hidden_size=50, output_size=10)
     # # train & evaluate
     for i in range(1000):
-        sample_train_x, sample_train_t = datasets.get_one_batch(train_x, train_t, batch_size=5)
+        sample_train_x, sample_train_t = get_one_batch(train_x, train_t, batch_size=5)
         gradients = net.gradient(sample_train_x, sample_train_t)
         # update parameters: mini-batch gradient descent
         for key in ("W1", "b1", "W2", "b2"):
