@@ -4,7 +4,8 @@ import logging; logging.basicConfig(level=logging.INFO)
 import struct
 import numpy as np
 import os
-from util import show_img, show_imgs, load_pickle, one_hot, label2name, get_one_batch
+import sys
+# from util import show_img, show_imgs, load_pickle, one_hot, label2name, get_one_batch
 
 mnist_fashion_name_list = ['t-shirt', 'trouser', 'pullover', 'dress', 'coat',
                            'sandal', 'shirt', 'sneaker', 'bag', 'ankle boot']
@@ -64,7 +65,9 @@ class MNIST(Loader):
         self.test_label_path = os.path.join(self.root, 't10k-labels-idx1-ubyte')
         
     def load(self, normalize=True, image_flat=False, label_one_hot=False):
-        logging.info('mnist load data: normalize={}, image_flat={}, label_one_hot={}'.format(normalize, image_flat, label_one_hot))
+        log_info = 'M@{}, C@{}, F@{}, MNIST load: normalize={}, image_flat={}, label_one_hot={}'.format(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, normalize, image_flat, label_one_hot)
+        logging.info(log_info)
+        
         train_image = self.load_raw(self.train_image_path).reshape(-1, 1, 28, 28)  # count, channel=1, H, W
         train_label = self.load_raw(self.train_label_path)
         test_image = self.load_raw(self.test_image_path).reshape(-1, 1, 28, 28)  # count, channel=1, H, W
@@ -149,6 +152,7 @@ class CIFAR10(object):
         test_image, test_label = self._load_data(os.path.join(self.root, self.test_batch_file))
 
         # data processing
+        # 由于没有归一化到[0, 1]导致梯度无法正常下降
         if normalize:
             train_image = train_image / 255.0
             test_image = test_image / 255.0

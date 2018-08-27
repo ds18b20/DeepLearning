@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import cv2
 import platform
 from six.moves import cPickle as pickle
+import sys
 
 
 def one_hot(vec, class_num=10):
@@ -61,14 +62,13 @@ def show_accuracy_loss(train_acc, test_acc, loss):
 
 
 def show_imgs(images, titles):
-    logging.info('images shape: {}'.format(images.shape))
-    logging.info('image titles: {}'.format(titles))
+    logging.info('M@{}, F@{}, show images: {}'.format(__name__, sys._getframe().f_code.co_name, titles))
+
     if images.ndim == 4 and images.shape[3] == 1:
         images_show = np.squeeze(images, axis=(3,))
     else:
         images_show = images
-    logging.info('show images shape: {}'.format(images_show.shape))
-    logging.info('show images dtype: {}'.format(images_show.dtype))
+
     n = images_show.shape[0]
     # _, figs = plt.subplots(1, n, figsize=(15, 15))
     _, figs = plt.subplots(1, n)
@@ -150,7 +150,7 @@ def im2col(input_data, filter_h, filter_w, stride=1, pad=0):
 
     img = np.pad(input_data, [(0, 0), (0, 0), (pad, pad), (pad, pad)], 'constant')
     col = np.zeros((N, C, filter_h, filter_w, out_h, out_w))
-    logging.info("start im2col...")
+    # logging.info("start im2col...")
     for y in range(filter_h):
         y_max = y + stride*out_h
         for x in range(filter_w):
@@ -158,7 +158,7 @@ def im2col(input_data, filter_h, filter_w, stride=1, pad=0):
             col[:, :, y, x, :, :] = img[:, :, y:y_max:stride, x:x_max:stride]
 
     col = col.transpose(0, 4, 5, 1, 2, 3).reshape(N*out_h*out_w, -1)
-    logging.info("col shape: {}".format(col.shape))
+    # logging.info("col shape: {}".format(col.shape))
 
     return col
 

@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import datasets
 import matplotlib.pyplot as plt
 import numpy as np
 from collections import OrderedDict
-import layers
+from common import layers
+from common.datasets import MNIST
+from common.util import one_hot, get_one_batch, show_imgs
 
 
 class TwoLayerNet(object):
@@ -68,18 +69,6 @@ class TwoLayerNet(object):
         return grads
 
 
-def show_sample_imgs(images, titles):
-    n = images.shape[0]
-    # _, figs = plt.subplots(1, n, figsize=(15, 15))
-    _, figs = plt.subplots(1, n)
-    for i in range(n):
-        figs[i].imshow(images[i].reshape((28, 28)), cmap='gray')
-        figs[i].axes.get_xaxis().set_visible(False)
-        figs[i].axes.get_yaxis().set_visible(False)
-        figs[i].axes.set_title(titles[i])
-    plt.show()
-
-
 def show_accuracy_loss(train_acc, test_acc, loss):
     n = 2
     _, figs = plt.subplots(1, n)
@@ -94,26 +83,26 @@ def show_accuracy_loss(train_acc, test_acc, loss):
 
 
 if __name__ == '__main__':
-    mnist = datasets.MNIST('datasets\\mnist')
-    train_x, train_t, test_x, test_t = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
+    mnist = MNIST('data/mnist')
+    train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
     # show sample images
-    # sample_train_x, sample_train_t = datasets.get_one_batch(train_x, train_t, batch_size=5)
-    # show_sample_imgs(sample_train_x, sample_train_y)
+    sample_train_x, sample_train_y = get_one_batch(train_x, train_y, batch_size=5)
+    show_imgs(sample_train_x.reshape(-1, 28, 28), sample_train_y)
     learning_rate = 0.1
     train_acc_list = []
     test_acc_list = []
     net = TwoLayerNet(input_size=28 * 28, hidden_size=50, output_size=10)
     # # train & evaluate
     for i in range(1000):
-        sample_train_x, sample_train_t = datasets.get_one_batch(train_x, train_t, batch_size=5)
-        gradients = net.gradient(sample_train_x, sample_train_t)
+        sample_train_x, sample_train_y = get_one_batch(train_x, train_y, batch_size=5)
+        gradients = net.gradient(sample_train_x, sample_train_y)
         # update parameters: mini-batch gradient descent
         for key in ("W1", "b1", "W2", "b2"):
             net.params[key] -= learning_rate * gradients[key]
         if i % 50 == 0:
-            acc_train = net.accuracy(train_x, train_t)
+            acc_train = net.accuracy(train_x, train_y)
             train_acc_list.append(acc_train)
-            acc_test = net.accuracy(test_x, test_t)
+            acc_test = net.accuracy(test_x, test_y)
             test_acc_list.append(acc_test)
             print("train accuracy: {:.3f}".format(acc_train), "test accuracy: {:.3f}".format(acc_test))
 

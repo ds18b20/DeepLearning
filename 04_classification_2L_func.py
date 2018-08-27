@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import datasets
 import matplotlib.pyplot as plt
 import numpy as np
+from common.datasets import MNIST
+from common.util import one_hot, get_one_batch, show_imgs
 
 
 class Classification2(object):
@@ -75,7 +76,7 @@ class Classification2(object):
         :return: None
         """
         assert labels.ndim == 1
-        self.d_fc2_out = self.sm_out - datasets.one_hot(labels)  # (5, 10)
+        self.d_fc2_out = self.sm_out - one_hot(labels)  # (5, 10)
 
     def bp_fc2(self):
         """
@@ -166,15 +167,15 @@ def show_fashion_imgs(images, titles):
 
 
 if __name__ == '__main__':
-    mnist = datasets.MNIST('datasets\\mnist')
+    mnist = MNIST('data/mnist')
     train_x, train_y, test_x, test_y = mnist.load(image_flat=True, label_one_hot=False)
     # show sample images
-    sample_train_x, sample_train_y = datasets.get_one_batch(train_x, train_y, batch_size=5)
-    # show_fashion_imgs(sample_train_x, sample_train_y)
+    sample_train_x, sample_train_y = get_one_batch(train_x, train_y, batch_size=5)
+    show_imgs(sample_train_x.reshape(-1, 28, 28), sample_train_y)
     # train & evaluate
     op = Classification2(input_size=28 * 28, hidden_size=100, output_size=10, learning_rate=0.001)
     for _ in range(1000):
-        sample_train_x, sample_train_y = datasets.get_one_batch(train_x, train_y, batch_size=5)
+        sample_train_x, sample_train_y = get_one_batch(train_x, train_y, batch_size=5)
         op.forward(sample_train_x, sample_train_y)
         op.backward(sample_train_x, sample_train_y)
         op.update_para()

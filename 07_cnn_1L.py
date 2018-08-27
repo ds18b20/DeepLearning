@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 import logging; logging.basicConfig(level=logging.INFO)
-import matplotlib.pyplot as plt
 import numpy as np
-import layers
+import common.layers as layers
 from collections import OrderedDict
-from datasets import datasets
-from util import get_one_batch, show_imgs, show_accuracy_loss
+from common.datasets import MNIST
+from common.util import get_one_batch, show_imgs, show_accuracy_loss
+import common.optimizer as optimizer
 
 
 class SimpleConvNet(object):
@@ -29,27 +29,21 @@ class SimpleConvNet(object):
 
         # init para
         self.params = {}
-        self.params['W1'] = weight_init_std * \
-                            np.random.randn(filter_num, channel, filter_size, filter_size)  # 30,1,5,5
+        self.params['W1'] = weight_init_std * np.random.randn(filter_num, channel, filter_size, filter_size)  # 30,1,5,5
         self.params['b1'] = np.zeros(filter_num)  # 30,
-        self.params['W2'] = weight_init_std * \
-                            np.random.randn(pool_output_size, hidden_size)  # (30*12*12),100 => 4320,100
+        self.params['W2'] = weight_init_std * np.random.randn(pool_output_size, hidden_size)  # (30*12*12),100 => 4320,100
         self.params['b2'] = np.zeros(hidden_size)  # 100,
-        self.params['W3'] = weight_init_std * \
-                            np.random.randn(hidden_size, output_size)  # 100,10
+        self.params['W3'] = weight_init_std * np.random.randn(hidden_size, output_size)  # 100,10
         self.params['b3'] = np.zeros(output_size)  # 10,
 
         # create layers
         self.layers = OrderedDict()
-        self.layers['Conv1'] = layers.Convolution(self.params['W1'], self.params['b1'],
-                                                  filter_stride, filter_pad)
-
+        self.layers['Conv1'] = layers.Convolution(self.params['W1'], self.params['b1'], filter_stride, filter_pad)
         self.layers['Relu1'] = layers.Relu()
         self.layers['Pool1'] = layers.Pooling(pool_h=2, pool_w=2, stride=2)
         self.layers['Affine1'] = layers.Affine(self.params['W2'], self.params['b2'])
         self.layers['Relu2'] = layers.Relu()
         self.layers['Affine2'] = layers.Affine(self.params['W3'], self.params['b3'])
-
         self.lossLayer = layers.SoftmaxCrossEntropy()
 
         self.loss_list = []
@@ -97,36 +91,39 @@ class SimpleConvNet(object):
 
 
 if __name__ == '__main__':
-    mnist = datasets.MNIST(r'datasets/mnist')
+    mnist = MNIST('data\\mnist')
     train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=False, label_one_hot=False)
     # # show sample images
-    # sample_train_x, sample_train_y = datasets.get_one_batch(train_x, train_y, batch_size=5)
-    # show_imgs(sample_train_x, sample_train_y)
+    # sample_train_x, sample_train_y = get_one_batch(train_x, train_y, batch_size=5)
+    # show_imgs(sample_train_x.reshape(-1, 28, 28), sample_train_y)
 
     learning_rate = 0.01
     train_acc_list = []
     test_acc_list = []
-    net = SimpleConvNet(input_dim=(1, 28, 28),
-                        conv_param={'filter_num': 30, 'filter_size': 5, 'pad': 0, 'stride': 1},
-                        pool_param={'pool_size': 2, 'pool_stride': 2},
-                        hidden_size=100, output_size=10, weight_init_std=0.01)
+    network = SimpleConvNet(input_dim=(1, 28, 28),
+                            conv_param={'filter_num': 30, 'filter_size': 5, 'pad': 0, 'stride': 1},
+                            pool_param={'pool_size': 2, 'pool_stride': 2},
+                            hidden_size=100, output_size=10, weight_init_std=0.01)
 
-    for i in range(100):
+    op = optimizer.Adam(lr=0.01)
+    epoch = 100
+    for i in range(1000):
         sample_train_x, sample_train_y = get_one_batch(train_x, train_y, batch_size=10)
-        logging.info('input sample_train_x shape: {}'.format(sample_train_x.shape))
-        logging.info('input sample_train_y shape: {}'.format(sample_train_y.shape))
+        grads = network.gradient(sample_train_x, sample_train_y)
+        try:
+            op.update(network.params, grads)
+        except ZeroDivisionError as e:
+            print('Handling run-time error:', e)
 
-        gradients = net.gradient(sample_train_x, sample_train_y)
-        # update parameters: mini-batch gradient descent
-        for key in ("W1", "b1", "W2", "b2", "W3", "b3"):
-            net.params[key] -= learning_rate * gradients[key]
-        if i % 10 == 0:
-            # acc_train = net.accuracy(train_x, train_y)
-            # train_acc_list.append(acc_train)
-            acc_test = net.accuracy(test_x, test_y)
+        if i % epoch == 0:
+            # evaluate train accuracy
+            acc_train = network.accuracy(sample_train_x, sample_train_y)
+            train_acc_list.append(acc_train)
+            # evaluate test accuracy
+            acc_test = network.accuracy(test_x, test_y)
             test_acc_list.append(acc_test)
-            logging.info('test accuracy: {}'.format(acc_test))
-            # print("train accuracy: {:.3f}".format(acc_train), "test accuracy: {:.3f}".format(acc_test))
+            logging.info("train accuracy: {:.3f}, test accuracy: {:.3f}".format(acc_train, acc_test))
 
-    # tmp = np.mean(np.array(net.loss_list).reshape(-1, 50), axis=1)
-    # show_accuracy_loss(train_acc_list, test_acc_list, tmp)
+    tmp = np.mean(np.array(network.loss_list).reshape(-1, epoch), axis=1)
+    print(np.array(network.loss_list).shape)
+    show_accuracy_loss(train_acc_list, test_acc_list, tmp)

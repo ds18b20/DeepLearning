@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import datasets
 import matplotlib.pyplot as plt
 import numpy as np
 from collections import OrderedDict
-import layers
+from common import layers
+from common.datasets import MNIST
+from common.util import one_hot, get_one_batch, show_imgs
 
 
 class TwoLayerNet(object):
@@ -99,14 +100,14 @@ def show_accuracy_loss(train_acc, test_acc, loss):
 
 
 if __name__ == '__main__':
-    mnist = datasets.MNIST('datasets\\mnist')
+    mnist = MNIST('data/mnist')
     train_x, train_t, test_x, test_t = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
     # reduce training data count to N
     N = 100
     train_x, train_t = train_x[:N], train_t[:N]
 
     # show sample images
-    # sample_train_x, sample_train_t = datasets.get_one_batch(train_x, train_t, batch_size=5)
+    # sample_train_x, sample_train_t = get_one_batch(train_x, train_t, batch_size=5)
     # show_sample_imgs(sample_train_x, sample_train_y)
     learning_rate = 0.01
     train_acc_list = []
@@ -114,7 +115,7 @@ if __name__ == '__main__':
     net = TwoLayerNet(input_size=28 * 28, hidden_size=50, output_size=10, weight_decay_lambda=0.2)
     # # train & evaluate
     for i in range(5000):
-        sample_train_x, sample_train_t = datasets.get_one_batch(train_x, train_t, batch_size=10)
+        sample_train_x, sample_train_t = get_one_batch(train_x, train_t, batch_size=10)
         gradients = net.gradient(sample_train_x, sample_train_t)
         # update parameters: mini-batch gradient descent
         for key in ("W1", "b1", "W2", "b2"):

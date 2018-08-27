@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import datasets
-import matplotlib.pyplot as plt
+import logging; logging.basicConfig(level=logging.INFO)
 import numpy as np
+from common.datasets import MNIST
+from common.util import one_hot, get_one_batch, show_imgs
 
 
 class Classification(object):
@@ -47,7 +48,7 @@ class Classification(object):
         :return: None
         """
         assert labels.ndim == 1
-        self.d_fc_out = self.sm_out - datasets.one_hot(labels)  # (5, 10)
+        self.d_fc_out = self.sm_out - one_hot(labels)  # (5, 10)
 
     def bp_fc(self, input_batch):
         """
@@ -103,28 +104,19 @@ def accuracy(y_hat: np.array, y: np.array):
 #     acc += accuracy(fc(X), y)
 #     return acc / len(data_iter)
 
-def show_sample_imgs(images, titles):
-    n = images.shape[0]
-    # _, figs = plt.subplots(1, n, figsize=(15, 15))
-    _, figs = plt.subplots(1, n)
-    for i in range(n):
-        figs[i].imshow(images[i].reshape((28, 28)), cmap='gray')
-        figs[i].axes.get_xaxis().set_visible(False)
-        figs[i].axes.get_yaxis().set_visible(False)
-        figs[i].axes.set_title(titles[i])
-    plt.show()
-
 
 if __name__ == '__main__':
-    mnist = datasets.MNIST('datasets\\mnist')
+    mnist = MNIST('data/mnist')
     train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
+
     # show sample images
-    sample_train_x, sample_train_y = datasets.get_one_batch(train_x, train_y, batch_size=5)
-    show_sample_imgs(sample_train_x, sample_train_y)
+    sample_train_x, sample_train_y = get_one_batch(train_x, train_y, batch_size=5)
+    show_imgs(sample_train_x.reshape(-1, 28, 28), sample_train_y)
+
     # train & evaluate
     op = Classification(input_num=28 * 28, output_num=10, learning_rate=0.01)
     for _ in range(1000):
-        sample_train_x, sample_train_y = datasets.get_one_batch(train_x, train_y, batch_size=5)
+        sample_train_x, sample_train_y = get_one_batch(train_x, train_y, batch_size=5)
         op.forward(sample_train_x, sample_train_y)
         op.backward(sample_train_x, sample_train_y)
         op.update_para()

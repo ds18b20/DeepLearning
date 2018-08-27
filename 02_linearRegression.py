@@ -92,8 +92,8 @@ if __name__ == '__main__':
 
         loss.append(reg.squared_loss())
 
-    print(reg.get_w())
-    print(reg.get_b())
+    print('W: {}'.format(reg.get_w()))
+    print('b: {}'.format(reg.get_b()))
 
     plt.plot(loss)
     plt.show()

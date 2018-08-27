@@ -2,8 +2,9 @@
 # -*- coding: UTF-8 -*-
 import logging; logging.basicConfig(level=logging.INFO)
 import numpy as np
-import functions
-from util import im2col, col2im, one_hot
+from common import functions
+from common.util import one_hot, im2col, col2im
+import sys
 
 
 class Affine(object):
@@ -18,9 +19,8 @@ class Affine(object):
         self.original_x_shape = None
 
         self.d_x = None
-
-        logging.info('Affine W shape: {}'.format(self.W.shape))
-        logging.info('Affine b shape: {}'.format(self.b.shape))
+        logging.info('M@{}, C@{}, F@{}, W shape: {}'.format(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, self.W.shape))
+        logging.info('M@{}, C@{}, F@{}, b shape: {}'.format(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, self.b.shape))
 
     def __str__(self):
         if hasattr(self.x, 'shape'):
@@ -39,9 +39,6 @@ class Affine(object):
         x = x_batch.reshape(x_batch.shape[0], -1)
         # self.x = x_batch.copy()
         self.x = x
-
-        logging.info('self.x shape: {}'.format(self.x.shape))
-        logging.info('self.W shape: {}'.format(self.W.shape))
         self.y = np.dot(self.x, self.W) + self.b
 
         return self.y
@@ -124,6 +121,7 @@ class SoftmaxCrossEntropy(object):
     def backward(self, d_y=1):
         assert self.t.ndim == 1
         batch_size = self.y.shape[0]
+        # 此处错误导致梯度无法正常下降
         self.d_x = (self.y - one_hot(self.t)) / batch_size  # fix here: (y - t) / batch
         return d_y * self.d_x
 
@@ -144,8 +142,8 @@ class Convolution:
         self.d_W = None
         self.d_b = None
 
-        logging.info('conv W shape: {}'.format(self.W.shape))
-        logging.info('conv b shape: {}'.format(self.b.shape))
+        logging.info('M@{}, C@{}, F@{}, W shape: {}'.format(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, self.W.shape))
+        logging.info('M@{}, C@{}, F@{}, b shape: {}'.format(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, self.b.shape))
 
     def forward(self, x):
         FN, C, FH, FW = self.W.shape
