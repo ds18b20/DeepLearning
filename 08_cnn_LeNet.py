@@ -5,7 +5,7 @@ import numpy as np
 import common.layers as layers
 from collections import OrderedDict
 from common.datasets import MNIST
-from common.util import get_one_batch, show_imgs, show_accuracy_loss
+from common.util import get_one_batch, show_imgs, show_accuracy_loss, show_filter
 import common.optimizer as optimizer
 
 
@@ -174,3 +174,4 @@ if __name__ == '__main__':
 
     tmp = np.mean(np.array(network.loss_list).reshape(-1, epoch), axis=1)
     show_accuracy_loss(train_acc_list, test_acc_list, tmp)
+    show_filter(network.params['W1'])

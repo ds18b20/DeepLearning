@@ -3,6 +3,7 @@
 import logging; logging.basicConfig(level=logging.INFO)
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import cv2
 import platform
 from six.moves import cPickle as pickle
@@ -82,7 +83,7 @@ def show_imgs(images, titles):
 
 def show_img(window_title="log"):
     """
-    coroutine
+    coroutine by generator
     Show images in new window
     """
     while True:
@@ -93,6 +94,25 @@ def show_img(window_title="log"):
         if cv2.waitKey(1) & 0xFF == ord('q'):
             cv2.destroyAllWindows()
             break
+
+
+def show_filter(filters, ncols=8, margin=3, scale=10):
+    """
+    c.f. https://gist.github.com/aidiary/07d530d5e08011832b12#file-draw_weight-py
+    """
+    FN, C, FH, FW = filters.shape
+    nrows = int(np.ceil(FN / ncols))
+    if FN < ncols:
+        ncols = FN
+
+    fig = plt.figure()
+    fig.subplots_adjust(left=0, right=1, bottom=0, top=1, hspace=0.05, wspace=0.05)
+
+    for index in range(FN):
+        # https://matplotlib.org/api/_as_gen/matplotlib.figure.Figure.html?highlight=add_subplot#matplotlib.figure.Figure.add_subplot
+        ax = fig.add_subplot(nrows, ncols, index+1, xticks=[], yticks=[])
+        ax.imshow(filters[index, 0], cmap=cm.gray_r, interpolation='nearest')
+    plt.show()
 
 
 def smooth_curve(x):
