@@ -12,8 +12,8 @@ import common.optimizer as optimizer
 class SimpleConvNet(object):
     def __init__(self,
                  input_dim=(1, 28, 28),
-                 conv_param={'filter_num': 30, 'filter_size': 5, 'pad': 0, 'stride': 1},
-                 pool_param={'pool_size': 2, 'pool_stride': 2},
+                 conv_param=None,
+                 pool_param=None,
                  hidden_size=100,
                  output_size=10,
                  weight_init_std=0.01):
@@ -90,6 +90,15 @@ class SimpleConvNet(object):
         return grads
 
 
+def show_structure(net, x_batch, y_batch):
+    ret = net.loss(x_batch, y_batch)
+    for layer in network.layers.values():
+        print(layer)
+    print(net.lossLayer)
+    print('****** Print structure with values: OK ******')
+    return ret
+
+
 if __name__ == '__main__':
     mnist = MNIST('data\\mnist')
     train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=False, label_one_hot=False)
@@ -104,6 +113,14 @@ if __name__ == '__main__':
                             conv_param={'filter_num': 30, 'filter_size': 5, 'pad': 0, 'stride': 1},
                             pool_param={'pool_size': 2, 'pool_stride': 2},
                             hidden_size=100, output_size=10, weight_init_std=0.01)
+    # for layer in network.layers.values():
+    #     print(layer)
+    # print(network.lossLayer)
+    # print('****** Print structure without values: OK ******')
+
+    # show network structure
+    sample_train_x, sample_train_y = get_one_batch(train_x, train_y, batch_size=10)
+    show_structure(network, sample_train_x, sample_train_y)
 
     op = optimizer.Adam(lr=0.01)
     epoch = 100
@@ -125,5 +142,4 @@ if __name__ == '__main__':
             logging.info("train accuracy: {:.3f}, test accuracy: {:.3f}".format(acc_train, acc_test))
 
     tmp = np.mean(np.array(network.loss_list).reshape(-1, epoch), axis=1)
-    print(np.array(network.loss_list).shape)
     show_accuracy_loss(train_acc_list, test_acc_list, tmp)

@@ -1,10 +1,10 @@
-# coding: utf-8
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
 import numpy as np
 
+
 class SGD(object):
-
     """確率的勾配降下法（Stochastic Gradient Descent）"""
-
     def __init__(self, lr=0.01):
         self.lr = lr
         
@@ -14,9 +14,7 @@ class SGD(object):
 
 
 class Momentum(object):
-
     """Momentum SGD"""
-
     def __init__(self, lr=0.01, momentum=0.9):
         self.lr = lr
         self.momentum = momentum
@@ -34,9 +32,7 @@ class Momentum(object):
 
 
 class Nesterov(object):
-
     """Nesterov's Accelerated Gradient (http://arxiv.org/abs/1212.0901)"""
-
     def __init__(self, lr=0.01, momentum=0.9):
         self.lr = lr
         self.momentum = momentum
@@ -56,9 +52,7 @@ class Nesterov(object):
 
 
 class AdaGrad(object):
-
     """AdaGrad"""
-
     def __init__(self, lr=0.01):
         self.lr = lr
         self.h = None
@@ -75,9 +69,7 @@ class AdaGrad(object):
 
 
 class RMSprop(object):
-
     """RMSprop"""
-
     def __init__(self, lr=0.01, decay_rate = 0.99):
         self.lr = lr
         self.decay_rate = decay_rate
@@ -96,9 +88,7 @@ class RMSprop(object):
 
 
 class Adam(object):
-
     """Adam (http://arxiv.org/abs/1412.6980v8)"""
-
     def __init__(self, lr=0.001, beta1=0.9, beta2=0.999):
         self.lr = lr
         self.beta1 = beta1

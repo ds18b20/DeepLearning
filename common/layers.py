@@ -32,6 +32,19 @@ class Affine(object):
         y_shape = (batch_size, y_feature_count)
         ret_str = "Affine layer: {} dot {} + {} => {}".format(x_shape, self.W.shape, self.b.shape, y_shape)
         return ret_str
+        
+    @property
+    def grad(self):
+        return self.d_W, self.d_b
+
+    @grad.setter
+    def grad(self, value):
+        pass
+        # if not isinstance(value, np.ndarray):
+            # raise ValueError('grad must be an numpy.ndarray!')
+        # if value < 0 or value > 100:
+            # raise ValueError('grad must between 0 ~ 100!')
+        # self._score = value
 
     def forward(self, x_batch):
         # テンソル対応
@@ -144,7 +157,27 @@ class Convolution:
 
         logging.info('M@{}, C@{}, F@{}, W shape: {}'.format(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, self.W.shape))
         logging.info('M@{}, C@{}, F@{}, b shape: {}'.format(__name__, self.__class__.__name__, sys._getframe().f_code.co_name, self.b.shape))
+    
+    @property
+    def grad(self):
+        return self.d_W, self.d_b
 
+    @grad.setter
+    def grad(self, value):
+        pass
+
+    def __str__(self):
+        # self.x changeds at each time
+        if hasattr(self.x, 'shape'):
+            N, C, H, W = self.x.shape
+        else:
+            N, H, W= '?', '?', '?'
+        FN, C, FH, FW = self.W.shape
+        x_shape = (N, C, H, W)
+        y_shape = (N, FN, 'new_H', 'new_W')
+        ret_str = "Convolution layer: {} conv {} + {} => {}".format(x_shape, self.W.shape, self.b.shape, y_shape)
+        return ret_str
+        
     def forward(self, x):
         FN, C, FH, FW = self.W.shape
         N, C, H, W = x.shape
@@ -177,7 +210,7 @@ class Convolution:
         return dx
 
 
-class Pooling:
+class Pooling(object):
     def __init__(self, pool_h, pool_w, stride=1, pad=0):
         self.pool_h = pool_h
         self.pool_w = pool_w
@@ -187,6 +220,20 @@ class Pooling:
         self.x = None
         self.arg_max = None
 
+    def __str__(self):
+        # self.x changeds at each time
+        if hasattr(self.x, 'shape'):
+            x_shape = self.x.shape
+            N, C, H, W = self.x.shape
+            H = int((H + 2 * self.pad - self.pool_h) / self.stride) + 1
+            W = int((W + 2 * self.pad - self.pool_w) / self.stride) + 1
+        else:
+            x_shape = '?', '?', '?', '?'
+            N, C, H, W = '?', '?', '?', '?'
+        
+        ret_str = "Pooling layer: {} => {}".format(x_shape, (N, C, H, W))
+        return ret_str
+        
     def forward(self, x):
         N, C, H, W = x.shape
         out_h = int(1 + (H - self.pool_h) / self.stride)
