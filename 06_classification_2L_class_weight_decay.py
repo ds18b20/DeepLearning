@@ -5,7 +5,8 @@ import numpy as np
 from collections import OrderedDict
 from common import layers
 from common.datasets import MNIST
-from common.util import one_hot, get_one_batch, show_imgs
+from common.util import one_hot, get_one_batch, show_imgs, show_accuracy_loss
+import common.optimizer as optimizer
 
 
 class TwoLayerNet(object):
@@ -26,7 +27,7 @@ class TwoLayerNet(object):
 
         self.lossLayer = layers.SoftmaxCrossEntropy()
 
-        self.loss_list = []
+        # self.loss_list = []
 
         self.weight_decay_lambda = weight_decay_lambda
 
@@ -58,7 +59,7 @@ class TwoLayerNet(object):
     def gradient(self, x_batch, t_batch):
         # forward
         loss = self.loss(x_batch, t_batch)
-        self.loss_list.append(loss)
+        # self.loss_list.append(loss)  # remove saving loss to run separated routine
         # backward
         d_y = 1
         d_y = self.lossLayer.backward(d_y)
@@ -74,58 +75,43 @@ class TwoLayerNet(object):
         return grads
 
 
-def show_sample_imgs(images, titles):
-    n = images.shape[0]
-    # _, figs = plt.subplots(1, n, figsize=(15, 15))
-    _, figs = plt.subplots(1, n)
-    for i in range(n):
-        figs[i].imshow(images[i].reshape((28, 28)), cmap='gray')
-        figs[i].axes.get_xaxis().set_visible(False)
-        figs[i].axes.get_yaxis().set_visible(False)
-        figs[i].axes.set_title(titles[i])
-    plt.show()
-
-
-def show_accuracy_loss(train_acc, test_acc, loss):
-    n = 2
-    _, figs = plt.subplots(1, n)
-    # fig[0]: train accuracy & test accuracy
-    figs[0].plot(train_acc, label='train accuracy')
-    figs[0].plot(test_acc, label='test accuracy')
-    figs[0].legend()
-    # fig[1]: loss
-    figs[1].plot(loss, label='loss')
-    figs[1].legend()
-    plt.show()
-
-
 if __name__ == '__main__':
     mnist = MNIST('data/mnist')
-    train_x, train_t, test_x, test_t = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
-    # reduce training data count to N
-    N = 100
-    train_x, train_t = train_x[:N], train_t[:N]
+    train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
+    """ reduce training data count to N """
+    N = 500
+    train_x, train_y = train_x[:N], train_y[:N]
 
     # show sample images
-    # sample_train_x, sample_train_t = get_one_batch(train_x, train_t, batch_size=5)
-    # show_sample_imgs(sample_train_x, sample_train_y)
+    # sample_train_x, sample_train_y = get_one_batch(train_x, train_y, batch_size=5)
+    # show_imgs(sample_train_x, sample_train_y)
     learning_rate = 0.01
     train_acc_list = []
     test_acc_list = []
-    net = TwoLayerNet(input_size=28 * 28, hidden_size=50, output_size=10, weight_decay_lambda=0.2)
-    # # train & evaluate
-    for i in range(5000):
-        sample_train_x, sample_train_t = get_one_batch(train_x, train_t, batch_size=10)
-        gradients = net.gradient(sample_train_x, sample_train_t)
-        # update parameters: mini-batch gradient descent
-        for key in ("W1", "b1", "W2", "b2"):
-            net.params[key] -= learning_rate * gradients[key]
-        if i % 50 == 0:
-            acc_train = net.accuracy(train_x, train_t)
-            train_acc_list.append(acc_train)
-            acc_test = net.accuracy(test_x, test_t)
-            test_acc_list.append(acc_test)
-            print("train accuracy: {:.3f}".format(acc_train), "test accuracy: {:.3f}".format(acc_test))
+    train_loss_list = []
+    test_loss_list = []
+    network = TwoLayerNet(input_size=28 * 28, hidden_size=50, output_size=10, weight_decay_lambda=0.0)
 
-    tmp = np.mean(np.array(net.loss_list).reshape(-1, 50), axis=1)
-    show_accuracy_loss(train_acc_list, test_acc_list, tmp)
+    op = optimizer.SGD(lr=0.01)
+    epoch = 100
+    # # train & evaluate
+    for i in range(10000):
+        sample_train_x, sample_train_y = get_one_batch(train_x, train_y, batch_size=10)
+        grads = network.gradient(sample_train_x, sample_train_y)
+        # update parameters: mini-batch gradient descent
+        op.update(network.params, grads)
+        if i % epoch == 0:
+            # calculate accuracy
+            train_acc = network.accuracy(sample_train_x, sample_train_y)
+            train_acc_list.append(train_acc)
+            test_acc = network.accuracy(test_x, test_y)
+            test_acc_list.append(test_acc)
+            print("train accuracy: {:.3f}".format(train_acc), "test accuracy: {:.3f}".format(test_acc))
+            # calculate loss
+            train_loss = network.loss(train_x, train_y)
+            train_loss_list.append(train_loss)
+            test_loss = network.loss(test_x, test_y)
+            test_loss_list.append(test_loss)
+            print("train loss: {:.3f}".format(train_loss), "test loss: {:.3f}".format(test_loss))
+
+    show_accuracy_loss(train_acc_list, test_acc_list, train_loss_list, test_loss_list)

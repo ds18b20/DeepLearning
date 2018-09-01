@@ -49,15 +49,16 @@ def load_pickle(f, encoding='latin1'):
     raise ValueError("invalid python version: {}".format(version))
 
 
-def show_accuracy_loss(train_acc, test_acc, loss):
+def show_accuracy_loss(train_acc, test_acc, train_loss, test_loss):
     n = 2
     _, figs = plt.subplots(1, n)
     # fig[0]: train accuracy & test accuracy
     figs[0].plot(train_acc, label='train accuracy')
     figs[0].plot(test_acc, label='test accuracy')
     figs[0].legend()
-    # fig[1]: loss
-    figs[1].plot(loss, label='loss')
+    # fig[1]: train loss & test loss
+    figs[1].plot(train_loss, label='train loss')
+    figs[1].plot(test_loss, label='test loss')
     figs[1].legend()
     plt.show()
 

@@ -46,7 +46,7 @@ class SimpleConvNet(object):
         self.layers['Affine2'] = layers.Affine(self.params['W3'], self.params['b3'])
         self.lossLayer = layers.SoftmaxCrossEntropy()
 
-        self.loss_list = []
+        # self.loss_list = []
 
     def predict(self, x_batch):
         tmp = x_batch.copy()
@@ -73,7 +73,7 @@ class SimpleConvNet(object):
     def gradient(self, x_batch, t_batch):
         # forward
         loss = self.loss(x_batch, t_batch)
-        self.loss_list.append(loss)
+        # self.loss_list.append(loss)  # remove saving loss to run separated routine
         # backward
         d_y = 1
         d_y = self.lossLayer.backward(d_y)
@@ -103,12 +103,14 @@ if __name__ == '__main__':
     mnist = MNIST('data\\mnist')
     train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=False, label_one_hot=False)
     # # show sample images
-    # sample_train_x, sample_train_y = get_one_batch(train_x, train_y, batch_size=5)
-    # show_imgs(sample_train_x.reshape(-1, 28, 28), sample_train_y)
+    # train_x_sample, train_y_sample = get_one_batch(train_x, train_y, batch_size=5)
+    # show_imgs(train_x_batch.reshape(-1, 28, 28), train_y_batch)
 
     learning_rate = 0.01
     train_acc_list = []
     test_acc_list = []
+    train_loss_list = []
+    test_loss_list = []
     network = SimpleConvNet(input_dim=(1, 28, 28),
                             conv_param={'filter_num': 30, 'filter_size': 5, 'pad': 0, 'stride': 1},
                             pool_param={'pool_size': 2, 'pool_stride': 2},
@@ -119,28 +121,32 @@ if __name__ == '__main__':
     # print('****** Print structure without values: OK ******')
 
     # show network structure
-    sample_train_x, sample_train_y = get_one_batch(train_x, train_y, batch_size=10)
-    show_structure(network, sample_train_x, sample_train_y)
+    train_x_batch, train_y_batch = get_one_batch(train_x, train_y, batch_size=10)
+    show_structure(network, train_x_batch, train_y_batch)
 
     op = optimizer.Adam(lr=0.01)
     epoch = 100
     for i in range(1000):
-        sample_train_x, sample_train_y = get_one_batch(train_x, train_y, batch_size=10)
-        grads = network.gradient(sample_train_x, sample_train_y)
+        train_x_batch, train_y_batch = get_one_batch(train_x, train_y, batch_size=10)
+        grads = network.gradient(train_x_batch, train_y_batch)
         try:
             op.update(network.params, grads)
         except ZeroDivisionError as e:
             print('Handling run-time error:', e)
 
         if i % epoch == 0:
-            # evaluate train accuracy
-            acc_train = network.accuracy(sample_train_x, sample_train_y)
-            train_acc_list.append(acc_train)
-            # evaluate test accuracy
-            acc_test = network.accuracy(test_x, test_y)
-            test_acc_list.append(acc_test)
-            logging.info("train accuracy: {:.3f}, test accuracy: {:.3f}".format(acc_train, acc_test))
+            # calculate accuracy
+            train_acc = network.accuracy(train_x_batch, train_y_batch)
+            train_acc_list.append(train_acc)
+            test_acc = network.accuracy(test_x, test_y)
+            test_acc_list.append(test_acc)
+            print("train accuracy: {:.3f}".format(train_acc), "test accuracy: {:.3f}".format(test_acc))
+            # calculate loss
+            train_loss = network.loss(train_x_batch, train_y_batch)
+            train_loss_list.append(train_loss)
+            test_loss = network.loss(test_x, test_y)
+            test_loss_list.append(test_loss)
+            print("train loss: {:.3f}".format(train_loss), "test loss: {:.3f}".format(test_loss))
 
-    tmp = np.mean(np.array(network.loss_list).reshape(-1, epoch), axis=1)
-    show_accuracy_loss(train_acc_list, test_acc_list, tmp)
+    show_accuracy_loss(train_acc_list, test_acc_list, train_loss_list, test_loss_list)
     show_filter(network.params['W1'])
