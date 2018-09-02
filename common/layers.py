@@ -139,6 +139,28 @@ class SoftmaxCrossEntropy(object):
         return d_y * self.d_x
 
 
+class Dropout(object):
+    """
+    http://arxiv.org/abs/1207.0580
+    http://zh.gluon.ai/chapter_deep-learning-basics/dropout.html
+    """
+    def __init__(self, drop_ratio=0.5):
+        self.drop_ratio = drop_ratio
+        self.keep_ratio = 1.0 - drop_ratio
+        self.mask = None
+        assert 0.0 <= self.drop_ratio < 1.0
+
+    def forward(self, x, train_flag=False):
+        if train_flag:
+            self.mask = np.random.rand(*x.shape) > self.drop_ratio
+            return x * self.mask / self.keep_ratio
+        else:
+            return x
+
+    def backward(self, d_y):
+        return d_y * self.mask
+
+    
 class Convolution:
     def __init__(self, weights, bias, stride=1, pad=0):
         self.W = weights
@@ -263,3 +285,9 @@ class Pooling(object):
         dx = col2im(dcol, self.x.shape, self.pool_h, self.pool_w, self.stride, self.pad)
         
         return dx
+
+if __name__ == '__main__':
+    data = (np.arange(9)+1).reshape(3, 3)
+    drop = Dropout()
+    print(drop.forward(data))
+    print(drop.backward(1.0))
