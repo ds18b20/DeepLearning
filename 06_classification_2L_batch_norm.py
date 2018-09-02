@@ -15,13 +15,16 @@ class TwoLayerNet(object):
         self.params = {}
         self.params['W1'] = weight_init_std * np.random.randn(input_size, hidden_size)
         self.params['b1'] = np.zeros(hidden_size)
+        self.params['gamma1'] = np.ones(hidden_size)
+        self.params['beta1'] = np.zeros(hidden_size)
         self.params['W2'] = weight_init_std * np.random.randn(hidden_size, output_size)
         self.params['b2'] = np.zeros(output_size)
+
 
         # create layers
         self.layers = OrderedDict()
         self.layers['Affine1'] = layers.Affine(self.params['W1'], self.params['b1'])
-        self.layers['BatchNorm1'] = layers.BatchNormalization(self.params['gamma' + str(idx)], self.params['beta' + str(idx)])
+        self.layers['BatchNorm1'] = layers.BatchNormalization(self.params['gamma1'], self.params['beta1'])
         self.layers['Relu1'] = layers.Relu()
         self.layers['Affine2'] = layers.Affine(self.params['W2'], self.params['b2'])
 
@@ -29,21 +32,23 @@ class TwoLayerNet(object):
 
         self.loss_list = []
 
-    def predict(self, x_batch):
-        tmp = x_batch.copy()
-        for layer in self.layers.values():
-            tmp = layer.forward(tmp)
-            # print(layer)
-        return tmp
+    def predict(self, x_batch, train_flag=True):
+        # tmp = x_batch.copy()
+        for layer_name, layer in self.layers.items():
+            if 'Dropout' in layer_name:
+                x_batch = layer.forward(x_batch, train_flag)
+            else:
+                x_batch = layer.forward(x_batch)
+        return x_batch
 
-    def loss(self, x_batch, t_batch):
-        y = self.predict(x_batch)
+    def loss(self, x_batch, t_batch, train_flag=True):
+        y = self.predict(x_batch, train_flag)
         ret = self.lossLayer.forward(y, t_batch)
         # print(self.lossLayer)
         return ret
 
-    def accuracy(self, x_batch, t_batch):
-        y = self.predict(x_batch)
+    def accuracy(self, x_batch, t_batch, train_flag=True):
+        y = self.predict(x_batch, train_flag)
         y = np.argmax(y, axis=1)
         # if t_batch.ndim != 1:
         #     tmp = t_batch.copy()
@@ -93,15 +98,15 @@ if __name__ == '__main__':
             network.params[key] -= learning_rate * gradients[key]
         if i % epoch == 0:
             # calculate accuracy
-            train_acc = network.accuracy(sample_train_x, sample_train_y)
+            train_acc = network.accuracy(sample_train_x, sample_train_y, train_flag=True)
             train_acc_list.append(train_acc)
-            test_acc = network.accuracy(test_x, test_y)
+            test_acc = network.accuracy(test_x, test_y, train_flag=True)
             test_acc_list.append(test_acc)
             print("train accuracy: {:.3f}".format(train_acc), "test accuracy: {:.3f}".format(test_acc))
             # calculate loss
-            train_loss = network.loss(train_x, train_y)
+            train_loss = network.loss(train_x, train_y, train_flag=True)
             train_loss_list.append(train_loss)
-            test_loss = network.loss(test_x, test_y)
+            test_loss = network.loss(test_x, test_y, train_flag=True)
             test_loss_list.append(test_loss)
             print("train loss: {:.3f}".format(train_loss), "test loss: {:.3f}".format(test_loss))
 
