@@ -65,6 +65,64 @@ class Affine(object):
         return self.d_x
 
 
+class Sigmoid:
+    def __init__(self):
+        self.x = None
+        self.y = None
+
+        self.d_x = None
+
+    def __str__(self):
+        if hasattr(self.x, 'shape'):
+            x_shape = self.x.shape
+        else:
+            x_shape = ('?', '?')
+        if hasattr(self.y, 'shape'):
+            y_shape = self.y.shape
+        else:
+            y_shape = ('?', '?')
+
+        return "Sigmoid layer: {} => {}".format(x_shape, y_shape)
+
+    def forward(self, x_batch):
+        self.x = x_batch
+        self.y = 1 / (1 + np.exp(-x_batch))
+        return self.y
+
+    def backward(self, d_y):
+        d_x = d_y * (1.0 - self.y) * self.y
+        return d_x
+
+
+class Tanh(object):
+    def __init__(self):
+        self.x = None
+        self.y = None
+
+        self.d_x = None
+
+    def __str__(self):
+        if hasattr(self.x, 'shape'):
+            x_shape = self.x.shape
+        else:
+            x_shape = ('?', '?')
+        if hasattr(self.y, 'shape'):
+            y_shape = self.y.shape
+        else:
+            y_shape = ('?', '?')
+
+        return "Tanh layer: {} => {}".format(x_shape, y_shape)
+
+    def forward(self, x_batch):
+        self.x = x_batch
+        self.y = np.tanh(self.x)
+        return self.y
+
+    def backward(self, d_y):
+        self.d_x = d_y * (1. - self.y ** 2)
+        return self.d_x
+
+
 class Relu(object):
     def __init__(self):
         self.x = None
@@ -77,7 +135,7 @@ class Relu(object):
             x_shape = self.x.shape
         else:
             x_shape = ('?', '?')
-        if hasattr(self.x, 'shape'):
+        if hasattr(self.y, 'shape'):
             y_shape = self.y.shape
         else:
             y_shape = ('?', '?')
@@ -85,7 +143,6 @@ class Relu(object):
         return "Relu layer: {} => {}".format(x_shape, y_shape)
 
     def forward(self, x_batch):
-        # self.x = x_batch.copy()
         self.x = x_batch
         self.y = np.maximum(self.x, 0)
         return self.y
