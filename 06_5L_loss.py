@@ -9,6 +9,21 @@ from common.util import numerical_gradient, get_one_batch
 from common.optimizer import SGD
 from common.datasets import MNIST
 
+import functools
+import time
+
+
+def timeit(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        ret = func(*args, **kwargs)
+        elapsed_time = time.time() - start_time
+        print('function [{}] finished in {} ms'.format(
+            func.__name__, int(elapsed_time * 1000)))
+        return ret
+    return wrapper
+
 
 class MultiLayerNet:
     """全結合による多層ニューラルネットワーク
@@ -165,6 +180,9 @@ class MultiLayerNet:
 
 
 if __name__ == '__main__':
+    mnist = MNIST('data/mnist')
+    train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
+
     max_iterations = 1000
     batch_size = 128
     # 1:実験の設定==========
@@ -180,9 +198,6 @@ if __name__ == '__main__':
 
     # 2:訓練の開始==========
     for i in range(max_iterations):
-        mnist = MNIST('data/mnist')
-        train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
-
         x_batch, t_batch = get_one_batch(train_x, train_y, batch_size=batch_size)
 
         for key in weight_init_types.keys():

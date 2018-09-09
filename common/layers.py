@@ -149,9 +149,11 @@ class Relu(object):
 
     def backward(self, d_y):
         idx = (self.x <= 0)
-        tmp = d_y.copy()  # keep d_y not modified, even modification is OK
-        tmp[idx] = 0
-        self.d_x = tmp
+        # tmp = d_y.copy()  # keep d_y not modified, even modification is OK
+        # tmp[idx] = 0
+        # self.d_x = tmp
+        d_y[idx] = 0
+        self.d_x = d_y
         return self.d_x
 
 
