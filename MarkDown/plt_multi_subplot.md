@@ -28,3 +28,6 @@ plt.show()
 
 # Reference
 https://stackoverflow.com/questions/37424530/how-to-make-more-than-10-subplots-in-a-figure/37444059
+
+关于plt中的figure/ax等部分等关系介绍如下：
+https://www.cnblogs.com/nju2014/p/5620776.html
