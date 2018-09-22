@@ -3,8 +3,8 @@
 
 import logging; logging.basicConfig(level=logging.INFO)
 import numpy as np
+from collections import OrderedDict
 from common import functions
-from common.util import one_hot, im2col, col2im
 import sys
 """
 Minimal character-level Vanilla RNN model. Written by Andrej Karpathy (@karpathy)
@@ -38,29 +38,34 @@ by = np.zeros((vocab_size, 1))  # output bias
 
 
 class AffineWithHidden(object):
-    def __init__(self, weights_hx, weights_hh, bias_h):
+    def __init__(self, weights_hx, weights_hh, bias_h, weights_hy, bias_y):
+        # init para
         self.Wxh = weights_hx
         self.Whh = weights_hh
         self.bh = bias_h
+        self.Why = weights_hy
+        self.by = bias_y
+
+        self.h_size = self.Wxh.shape[-1]
+        self.h = OrderedDict()
+        self.h[-1] = np.zeros(1, self.h_size)
 
         self.d_Wxh = None
         self.d_Whh = None
         self.d_bh = None
 
         self.x = None
-        self.y = None
+        self.y = OrderedDict()
 
-        logging.info(
-            'M@{}, C@{}, F@{}, W_hx shape: {}, W_hh shape: {}'.format(__name__,
-                                                                      self.__class__.__name__,
-                                                                      sys._getframe().f_code.co_name,
-                                                                      self.Wxh.shape,
-                                                                      self.Whh.shape))
-        logging.info(
-            'M@{}, C@{}, F@{}, b_h shape: {}'.format(__name__,
-                                                     self.__class__.__name__,
-                                                     sys._getframe().f_code.co_name,
-                                                     self.bh.shape))
+        logging.info('M@{}, C@{}, F@{}, W_hx shape: {}, W_hh shape: {}'.format(__name__,
+                                                                               self.__class__.__name__,
+                                                                               sys._getframe().f_code.co_name,
+                                                                               self.Wxh.shape,
+                                                                               self.Whh.shape))
+        logging.info('M@{}, C@{}, F@{}, b_h shape: {}'.format(__name__,
+                                                              self.__class__.__name__,
+                                                              sys._getframe().f_code.co_name,
+                                                              self.bh.shape))
 
     def __str__(self):
         if hasattr(self.x, 'shape'):
@@ -78,7 +83,11 @@ class AffineWithHidden(object):
 
     def forward(self, x_batch):
         self.x = x_batch
-        self.y = np.dot(self.x, self.W) + self.b
+        assert self.x.ndim == 3
+        step_num = self.x.shape[0]
+        for idx, x_step in enumerate(self.x):
+            self.h[idx] = np.dot(x_step, self.Wxh) + np.dot(self.h[idx-1], self.Whh) + self.bh
+            self.y[idx] = np.dot(self.h[idx], self.Why) + self.by
 
         return self.y
 
