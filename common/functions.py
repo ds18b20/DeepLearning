@@ -5,7 +5,7 @@ import numpy as np
 
 def softmax(array):
     tmp = array.copy()
-    tmp -= tmp.max(axis=1, keepdims=True)  # max of array in axis 1
+    tmp -= tmp.max(axis=1, keepdims=True)  # max of array in axis_1(batch direction)
     exp = np.exp(tmp)  # exp(matrix)
     return exp / np.sum(exp, axis=1, keepdims=True)  # exp / sum of each row
 
