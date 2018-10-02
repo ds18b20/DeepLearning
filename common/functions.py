@@ -10,12 +10,12 @@ def softmax(array):
     return exp / np.sum(exp, axis=1, keepdims=True)  # exp / sum of each row
 
 
-def cross_entropy(y_hat, y):
+def cross_entropy(y, label):
     delta = 1e-6  # in case of log(0)
-    row_count = y_hat.shape[0]
+    row_count = y.shape[0]
     index_row = range(row_count)
-    index_column = y
-    picked = y_hat[index_row, index_column] + delta  # select element by y
+    index_column = label
+    picked = y[index_row, index_column] + delta  # select element by y
     return np.sum(-np.log(picked)) / row_count  # sum(-t * ln(y)) / row_count
 
 

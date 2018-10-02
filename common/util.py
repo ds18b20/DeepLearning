@@ -10,7 +10,7 @@ from six.moves import cPickle as pickle
 import sys
 
 
-def one_hot(vec, class_num=10):
+def one_hot(array, class_num=10):
     """
     (vec_count, )-->(vec_count, length)
     """
