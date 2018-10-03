@@ -14,13 +14,14 @@ def one_hot(array, class_num=10):
     """
     (vec_count, )-->(vec_count, length)
     """
-    row_count = len(vec)
-    column_count = class_num
+    array_shape = array.shape
+    array_size = array.size
 
-    label_one_hot = np.zeros((row_count, column_count))
-    label_one_hot[range(row_count), vec] = 1
+    vec = array.reshape(array_size, )
+    ret = np.zeros((array_size, class_num))
+    ret[range(array_size), vec] = 1
 
-    return label_one_hot
+    return ret.reshape(*array_shape, class_num)
 
 
 def numerical_gradient(f, x):
@@ -234,3 +235,12 @@ def col2im(col, input_shape, filter_h, filter_w, stride=1, pad=0):
             img[:, :, y:y_max:stride, x:x_max:stride] += col[:, :, y, x, :, :]
 
     return img[:, :, pad:H + pad, pad:W + pad]
+
+if __name__ == '__main__':
+    step_num = 2
+    batch_size = 3
+    class_num = 5
+    input_array = np.random.choice(class_num, size=(step_num, batch_size))
+    output_array = one_hot(input_array, class_num=class_num)
+    print('input_array:\n', input_array)
+    print('output_array:\n', output_array)
