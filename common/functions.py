@@ -3,6 +3,14 @@
 import numpy as np
 
 
+def mean_squared_error(y, label):
+    # y/label can be multi dimensional array
+    row_count = y.shape[0]
+    ret = 0.5 * np.sum((y - label) ** 2) / row_count
+
+    return ret  # sum((y-t)**2) / row_count
+
+
 def softmax(array):
     tmp = array.copy()
     tmp -= tmp.max(axis=1, keepdims=True)  # max of array in axis_1(batch direction)
@@ -11,6 +19,7 @@ def softmax(array):
 
 
 def cross_entropy(y, label):
+    # y/label can be multi dimensional array
     delta = 1e-6  # in case of log(0)
     row_count = y.shape[0]
     index_row = range(row_count)

@@ -157,6 +157,51 @@ class Relu(object):
         return self.d_x
 
 
+# Mean Squared Error
+class MSE(object):
+    def __init__(self):
+        self.x = None
+        self.t = None
+
+        self.y = None
+        self.loss = None
+
+        self.d_x = None
+
+    def __str__(self):
+        if hasattr(self.x, 'shape'):
+            x_shape = self.x.shape
+        else:
+            x_shape = ('?', '?')
+        if hasattr(self.y, 'shape'):
+            y_shape = self.y.shape
+        else:
+            y_shape = ('?', '?')
+        if hasattr(self.t, 'shape'):
+            t_shape = self.t.shape
+        else:
+            t_shape = ('?', '?')
+        if hasattr(self.loss, 'shape'):
+            loss_shape = self.loss.shape
+        else:
+            loss_shape = ('?', '?')
+        return "Mean Squared Error layer: x:{} => y:{} & t:{} => loss:{}".format(x_shape, y_shape, t_shape, loss_shape)
+
+    def forward(self, x_batch, t_batch):
+        self.x = x_batch
+        self.t = t_batch
+        self.y = self.x
+        self.loss = functions.mean_squared_error(self.y, self.t)
+
+        return self.loss
+
+    def backward(self, d_y=1):
+        assert self.t.shape[-1] == 1
+        batch_size = self.y.shape[0]
+        self.d_x = (self.y - self.t) / batch_size
+        return d_y * self.d_x
+
+
 class SoftmaxCrossEntropy(object):
     def __init__(self):
         self.x = None
@@ -431,7 +476,14 @@ class Pooling(object):
         return dx
 
 if __name__ == '__main__':
-    data = (np.arange(9)+1).reshape(3, 3)
-    drop = Dropout()
-    print(drop.forward(data))
-    print(drop.backward(1.0))
+    # data = (np.arange(9)+1).reshape(3, 3)
+    # drop = Dropout()
+    # print(drop.forward(data))
+    # print(drop.backward(1.0))
+    mse = MSE()
+    print(mse)
+    x_batch = np.array([[1], [1], [0]])
+    t_batch = np.array([[1], [1], [1]])
+    print(mse.forward(x_batch, t_batch))
+    print(mse)
+    print(mse.backward(d_y=1))
