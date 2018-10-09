@@ -145,7 +145,7 @@ class MultiLayerNet:
         return grads
 
     def gradient(self, x, t):
-        """勾配を求める（誤差逆伝搬法）
+        """勾配を求める（誤差逆伝播法）
 
         Parameters
         ----------
