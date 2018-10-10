@@ -65,7 +65,7 @@ class Affine(object):
         return self.d_x
 
 
-class Sigmoid:
+class Sigmoid(object):
     def __init__(self):
         self.x = None
         self.y = None
@@ -84,9 +84,9 @@ class Sigmoid:
 
         return "Sigmoid layer: {} => {}".format(x_shape, y_shape)
 
-    def forward(self, x_batch):
-        self.x = x_batch
-        self.y = 1 / (1 + np.exp(-x_batch))
+    def forward(self, x):
+        self.x = x
+        self.y = 1 / (1 + np.exp(-self.x))
         return self.y
 
     def backward(self, d_y):
@@ -196,6 +196,8 @@ class MSE(object):
         return self.loss
 
     def backward(self, d_y=1):
+        print(self.y.shape)
+        print(self.t.shape)
         assert self.t.shape[-1] == 1
         batch_size = self.y.shape[0]
         self.d_x = (self.y - self.t) / batch_size

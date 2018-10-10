@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+import logging; logging.basicConfig(level=logging.INFO)
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import OrderedDict
@@ -23,7 +26,7 @@ class MultiLayerRegression(object):
         for idx in range(1, len(self.hidden_size_list) + 1):
             self.layers['Affine' + str(idx)] = layers.Affine(weights=self.params['W'+str(idx)],
                                                              bias=self.params['b'+str(idx)])
-            self.layers['Activation' + str(idx)] = activation_layer[activation]
+            self.layers['Activation' + str(idx)] = activation_layer[activation]()  # must use () to create instance !!!
         idx = len(self.hidden_size_list) + 1
         self.layers['Affine' + str(idx)] = layers.Affine(weights=self.params['W' + str(idx)],
                                                          bias=self.params['b' + str(idx)])
@@ -46,9 +49,12 @@ class MultiLayerRegression(object):
             self.params['b'+str(idx)] = np.random.randn(all_size_list[idx])
 
     def predict(self, x_batch):
+        logging.info('Predict Start...'.format())
+        tmp = x_batch.copy()
         for layer in self.layers.values():
-            x_batch = layer.forward(x_batch)
-        return x_batch
+            tmp = layer.forward(tmp)
+            logging.info('Layer> {}'.format(layer))
+        return tmp
 
     def loss(self, x_batch, t_batch):
         y_batch = self.predict(x_batch)
@@ -57,7 +63,7 @@ class MultiLayerRegression(object):
 
     def gradient(self, x_batch, t_batch):
         # forward
-        self.predict(x_batch)
+        self.loss(x_batch, t_batch)
         # backward
         dout = 1
         self.last_layer.backward(d_y=dout)
@@ -144,5 +150,5 @@ if __name__ == '__main__':
     print(sample_x.shape, sample_t.shape)
     print(sample_x[0], sample_t[0])
     g = reg.gradient(x_batch=sample_x, t_batch=sample_t)
-    g_n = reg.numerical_gradient(sample_x, sample_t)
+    g_n = reg.numerical_gradient(sample_x, sample_t)  # sample_t size confirm !!!
 
