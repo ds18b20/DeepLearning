@@ -49,30 +49,40 @@ class MultiLayerRegression(object):
             self.params['b'+str(idx)] = np.random.randn(all_size_list[idx])
 
     def predict(self, x_batch):
-        logging.info('Predict Start...'.format())
-        tmp = x_batch.copy()
+        logging.info('Predict Start...')
+        logging.info('Input> x_batch shape: {}'.format(x_batch.shape))
+        tmp = x_batch.copy()  # .copy() is not necessary!
         for layer in self.layers.values():
             tmp = layer.forward(tmp)
-            logging.info('Layer> {}'.format(layer))
+            logging.info('Forward Layer> {}'.format(layer))
+        logging.info('Output> y_batch shape: {}'.format(next(reversed(self.layers.values())).y.shape))
+        logging.info('Predict End.')
         return tmp
 
     def loss(self, x_batch, t_batch):
+        logging.info('Loss Cal Start...')
         y_batch = self.predict(x_batch)
         loss = self.last_layer.forward(y_batch, t_batch)
+        logging.info('Loss Cal  End.')
         return loss
 
     def gradient(self, x_batch, t_batch):
         # forward
+        logging.info('Forward Start...')
         self.loss(x_batch, t_batch)
+        logging.info('Forward End.')
         # backward
+        logging.info('Backward Start...')
         dout = 1
-        self.last_layer.backward(d_y=dout)
-        layers = list(self.layers)
+        logging.info('Loss Layer> {}'.format(self.last_layer))
+        dout = self.last_layer.backward(d_y=dout)
+        layers = list(self.layers.values())  # self.layers is a dict not a list!!!
         layers.reverse()
 
         for layer in layers:
             dout = layer.backward(dout)
-
+            logging.info('Backward Layer> {}'.format(layer))
+        logging.info('Backward End.')
         grad = {}
         for idx in range(1, len(self.hidden_size_list) + 2):
             grad['W'+str(idx)] = self.layers['Affine' + str(idx)].d_W
@@ -81,12 +91,10 @@ class MultiLayerRegression(object):
     
     def numerical_gradient(self, x, t):
         """勾配を求める（数値微分）
-
         Parameters
         ----------
         x : 入力データ
         t : 教師ラベル
-
         Returns
         -------
         各層の勾配を持ったディクショナリ変数
@@ -94,9 +102,10 @@ class MultiLayerRegression(object):
             grads['b1']、grads['b2']、...は各層のバイアス
         """
         loss_W = lambda W: self.loss(x, t)
+        print(loss_W)
 
         grads = {}
-        for idx in range(1, self.hidden_layer_num+2):
+        for idx in range(1, self.hidden_layer_num + 2):
             grads['W' + str(idx)] = numerical_gradient(loss_W, self.params['W' + str(idx)])
             grads['b' + str(idx)] = numerical_gradient(loss_W, self.params['b' + str(idx)])
 
@@ -111,7 +120,7 @@ class MultiLayerRegression(object):
         epsilon = np.random.normal(0.0, scale=0.01)
         labels += epsilon
 
-        return features, labels
+        return features, labels.reshape(-1, 1)
 
     def update_batch(self, features_set, labels_set):
         # assert len(features_set) == len(labels_set)
@@ -121,6 +130,7 @@ class MultiLayerRegression(object):
         batch_labels = labels_set[index]
 
         return batch_features, batch_labels
+
 
 if __name__ == '__main__':
     # reg = OneLayerRegression(input_vec_size=2, batch_size=10)
@@ -145,10 +155,18 @@ if __name__ == '__main__':
     # for key, value in reg.params.items():
     #     print(key, value.shape)
     x, t = reg.generate_simple_dataset(num_examples=1000)
+    print('Source Data: x.shape', x.shape)
+    print('Source Data: t.shape', t.shape)
     sample_x, sample_t = reg.update_batch(x, t)
 
-    print(sample_x.shape, sample_t.shape)
+    print('Sample Data: sample_x.shape', sample_x.shape)
+    print('Sample Data: sample_t.shape', sample_t.shape)
     print(sample_x[0], sample_t[0])
+    
     g = reg.gradient(x_batch=sample_x, t_batch=sample_t)
     g_n = reg.numerical_gradient(sample_x, sample_t)  # sample_t size confirm !!!
-
+    # for key, value in g.items():
+    #     print(key)
+    print(g['W4'])
+    print(g_n['W4'])
+    print('ng', numerical_gradient(lambda x: np.dot(x, [[2],[1]]), np.array([[1, 2]])))

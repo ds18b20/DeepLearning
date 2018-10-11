@@ -60,7 +60,7 @@ class Affine(object):
         self.d_x = np.dot(d_y, self.W.T)
         self.d_W = np.dot(self.x.T, d_y)
         self.d_b = np.sum(d_y, axis=0)
-        self.d_x = self.d_x.reshape(*self.original_x_shape)  # 入力データの形状に戻す（テンソル対応）
+        self.d_x = self.d_x.reshape(*self.original_x_shape)  # reshape to input-data shape(for tensor use)
 
         return self.d_x
 
@@ -196,8 +196,6 @@ class MSE(object):
         return self.loss
 
     def backward(self, d_y=1):
-        print(self.y.shape)
-        print(self.t.shape)
         assert self.t.shape[-1] == 1
         batch_size = self.y.shape[0]
         self.d_x = (self.y - self.t) / batch_size
