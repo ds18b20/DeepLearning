@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import logging; logging.basicConfig(level=logging.INFO)
+import logging; logging.basicConfig(level=logging.WARNING)
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import OrderedDict
@@ -102,18 +102,19 @@ class MultiLayerRegression(object):
             grads['b1']、grads['b2']、...は各層のバイアス
         """
         loss_W = lambda W: self.loss(x, t)
-        print(loss_W)
 
         grads = {}
         for idx in range(1, self.hidden_layer_num + 2):
-            grads['W' + str(idx)] = numerical_gradient(loss_W, self.params['W' + str(idx)])
-            grads['b' + str(idx)] = numerical_gradient(loss_W, self.params['b' + str(idx)])
+            # grads['W' + str(idx)] = numerical_gradient(loss_W, self.params['W' + str(idx)])
+            # grads['b' + str(idx)] = numerical_gradient(loss_W, self.params['b' + str(idx)])
+            grads['W' + str(idx)] = numerical_gradient(loss_W, self.layers['Affine' + str(idx)].W)
+            grads['b' + str(idx)] = numerical_gradient(loss_W, self.layers['Affine' + str(idx)].b)
 
         return grads
 
     def generate_simple_dataset(self, num_examples):
-        true_w = np.array([3.0, 7.0, 5.0])
-        true_b = np.array([8.0, ])
+        true_w = np.array([3.0, 7.0, 5.0], dtype=float)
+        true_b = np.array([8.0, ], dtype=float)
 
         features = np.random.randn(num_examples, self.input_size)
         labels = np.dot(features, true_w) + true_b
@@ -130,6 +131,31 @@ class MultiLayerRegression(object):
         batch_labels = labels_set[index]
 
         return batch_features, batch_labels
+
+    def numerical_gradient_test(self, x, t):
+        """勾配を求める（数値微分）
+        Parameters
+        ----------
+        x : 入力データ
+        t : 教師ラベル
+        Returns
+        -------
+        各層の勾配を持ったディクショナリ変数
+            grads['W1']、grads['W2']、...は各層の重み
+            grads['b1']、grads['b2']、...は各層のバイアス
+        """
+        loss_W = lambda W: self.loss(x, t)
+
+        print('W shape:', self.params['W1'].shape)
+        print('b shape:', self.params['b1'].shape)
+        grads_W1 = foo(loss_W, self.params['W1'])
+
+        return grads_W1
+
+
+def foo(f, x):
+    print('ori_x:\n', x)
+    return f(x)
 
 
 if __name__ == '__main__':
@@ -151,22 +177,18 @@ if __name__ == '__main__':
     # plt.show()
 
     reg = MultiLayerRegression(input_size=3, hidden_size_list=[5, 7, 9], output_size=1, weight_init_std=0.01, activation='sigmoid', batch_size=10)
-    reg.init_weight(0.01)
-    # for key, value in reg.params.items():
-    #     print(key, value.shape)
+    """
+    # # reg.init_weight(0.01)  # second use -> error!!!
+    """
+    # print(reg.params['W1'])
+    # print(reg.layers['Affine1'].W)
+
     x, t = reg.generate_simple_dataset(num_examples=1000)
     print('Source Data: x.shape', x.shape)
     print('Source Data: t.shape', t.shape)
     sample_x, sample_t = reg.update_batch(x, t)
-
     print('Sample Data: sample_x.shape', sample_x.shape)
     print('Sample Data: sample_t.shape', sample_t.shape)
-    print(sample_x[0], sample_t[0])
-    
-    g = reg.gradient(x_batch=sample_x, t_batch=sample_t)
-    g_n = reg.numerical_gradient(sample_x, sample_t)  # sample_t size confirm !!!
-    # for key, value in g.items():
-    #     print(key)
-    print(g['W4'])
-    print(g_n['W4'])
-    print('ng', numerical_gradient(lambda x: np.dot(x, [[2],[1]]), np.array([[1, 2]])))
+    # print(sample_x[0], sample_t[0])
+
+

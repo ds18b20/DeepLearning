@@ -26,7 +26,7 @@ def one_hot(array, class_num=10):
 
 def numerical_gradient(f, x):
     h = 1e-4  # 0.0001
-    grad = np.zeros_like(x)
+    grad = np.zeros_like(x, dtype=float)
 
     it = np.nditer(x, flags=['multi_index'], op_flags=['readwrite'])
     while not it.finished:
@@ -39,7 +39,7 @@ def numerical_gradient(f, x):
         fxh2 = f(x)  # f(x-h)
         grad[idx] = (fxh1 - fxh2) / (2 * h)
 
-        x[idx] = tmp_val  # 値を元に戻す
+        x[idx] = tmp_val  # restore initial value
         it.iternext()
 
     return grad
@@ -235,6 +235,7 @@ def col2im(col, input_shape, filter_h, filter_w, stride=1, pad=0):
             img[:, :, y:y_max:stride, x:x_max:stride] += col[:, :, y, x, :, :]
 
     return img[:, :, pad:H + pad, pad:W + pad]
+
 
 if __name__ == '__main__':
     step_num = 2
