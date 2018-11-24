@@ -4,9 +4,9 @@
 import logging; logging.basicConfig(level=logging.INFO)
 import numpy as np
 from collections import OrderedDict
-from common import functions
-import sys
+from common.datasets import TEXT
 from common.util import one_hot
+import sys
 """
 Minimal character-level Vanilla RNN model. Written by Andrej Karpathy (@karpathy)
 BSD License
@@ -61,16 +61,16 @@ class RNNcore(object):
         (x_feature_count, h_feature_count) = self.Wxh.shape
         x_shape = (batch_size, x_feature_count)
         h_shape = (batch_size, h_feature_count)
-        ret_str = "Affine layer: {} dot {} + {} dot {} + {} => {}".format(x_shape, self.Wxh.shape,
-                                                                          h_shape, self.Whh.shape,
-                                                                          self.bh.shape,
-                                                                          h_shape)
+        ret_str = "RNN core layer: {} dot {} + {} dot {} + {} => {}".format(x_shape, self.Wxh.shape,
+                                                                            h_shape, self.Whh.shape,
+                                                                            self.bh.shape,
+                                                                            h_shape)
         return ret_str
 
     def forward(self, x_batch):
         assert x_batch.ndim == 3
         self.x = x_batch
-        self.step_num, self.batch_size, self.class_num = self.x.shape
+        self.step_num, self.batch_size, self.class_num = self.x.shape  # step x batch x class
 
         self.h[-1] = np.zeros((self.batch_size, self.h_size))
         for idx, x_step in enumerate(self.x):
@@ -98,10 +98,19 @@ class RNNcore(object):
         return None  # no lower level layer
 
 if __name__ == '__main__':
+    text = TEXT(r"datasets/text")
+    text_data = text.load()
+    vocab_num = len(text.corpus_chars)
+    print(text_data[:10])
+    print(text.idx_to_char(text_data[:10]))
+    x, y = text.get_one_batch_random(text_data, batch_size=2, steps_num=5)
+    x = one_hot(x, class_num=vocab_num)
+    print("x.shape", x.shape)
+
+    """
     # hyper-parameters
-    batch_size = 2
-    # vocab_size = 2581
-    vocab_size = 10
+    batch_size = 2  # batch size
+    vocab_size = 128  # size of full vocabulary dataset
     hidden_size = 100  # size of hidden layer of neurons
     seq_length = 5  # number of steps to unroll the RNN for
     learning_rate = 1e-1
@@ -115,8 +124,9 @@ if __name__ == '__main__':
     by = np.zeros((1, vocab_size))  # output bias
 
     rnn = RNNcore(weights_xh=Wxh, weights_hh=Whh, bias_h=bh, weights_hy=Why, bias_y=by)
-    batch_x = one_hot(np.random.choice(vocab_size, size=(seq_length, batch_size)), class_num=10)
-    # print(batch_x)
+    batch_x = one_hot(np.random.choice(vocab_size, size=(seq_length, batch_size)), class_num=vocab_size)
+    print(batch_x.shape)
     y = rnn.forward(batch_x)
     for key, value in y.items():
         print(key, value.shape)
+    """

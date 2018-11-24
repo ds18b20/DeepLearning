@@ -5,7 +5,8 @@ import numpy as np
 import common.layers as layers
 from collections import OrderedDict
 from common.datasets import MNIST
-from common.util import get_one_batch, show_imgs, show_accuracy_loss, show_filter
+from common.util import get_one_batch
+from common.visualize import show_imgs, show_accuracy_loss, show_filter
 import common.optimizer as optimizer
 
 
@@ -69,7 +70,7 @@ class LeNet(object):
         # affine 3
         self.layers['Affine3'] = layers.Affine(self.params['W5'], self.params['b5'])
         # loss
-        self.lossLayer = layers.SoftmaxCrossEntropy()
+        self.lossLayer = layers.SoftmaxCrossEntropy(class_num=10)
 
         self.loss_list = []
 

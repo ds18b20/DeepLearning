@@ -1,25 +1,38 @@
 # coding: utf-8
 # Reference: https://github.com/oreilly-japan/deep-learning-from-scratch
-import logging; logging.basicConfig(level=logging.INFO)
+# import logging; logging.basicConfig(level=logging.INFO)
+# import logging; logging.basicConfig(level=logging.DEBUG)
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import cv2
 import platform
 from six.moves import cPickle as pickle
-import sys
 
 
-def one_hot(array, class_num=10):
+def accuracy(y_hat: np.array, y: np.array):
+    tmp = y_hat.argmax(axis=1) == y  # type: np.ndarray
+    return np.mean(tmp)
+
+
+def check_is_ndarray(input_array):
+    try:
+        return isinstance(input_array, np.ndarray)  # or use: hasattr(input_array, shape)
+    except TypeError:
+        print("Input data type should be ndarray.")
+        
+        
+def one_hot(input_array, class_num):
     """
-    (vec_count, )-->(vec_count, length)
+    (matrix, )-->(matrix, length)
     """
-    array_shape = array.shape
-    array_size = array.size
+    if input_array.shape[-1] == 1:
+        dim = input_array.ndim
+        input_array = np.squeeze(input_array, axis=dim - 1)
+    array_size = input_array.size
+    array_shape = input_array.shape
 
-    vec = array.reshape(array_size, )
-    ret = np.zeros((array_size, class_num))
-    ret[range(array_size), vec] = 1
+    # vec = input_array.reshape(array_size, )  # flatten input_array
+    vec = input_array.flatten()  # flatten input_array
+    ret = np.zeros((array_size, class_num))  # temp zero matrix
+    ret[range(array_size), vec] = 1  # modify last dimension by vec values
 
     return ret.reshape(*array_shape, class_num)
 
@@ -34,9 +47,11 @@ def numerical_gradient(f, x):
         tmp_val = x[idx]
         x[idx] = float(tmp_val) + h
         fxh1 = f(x)  # f(x+h)
+        # print('fxh1:', fxh1)
 
         x[idx] = tmp_val - h
         fxh2 = f(x)  # f(x-h)
+        # print('fxh2:', fxh2)
         grad[idx] = (fxh1 - fxh2) / (2 * h)
 
         x[idx] = tmp_val  # 値を元に戻す
@@ -63,7 +78,6 @@ def label2name(index_array, label_array):
 
 def load_pickle(f, encoding='latin1'):
     version = platform.python_version_tuple()
-    logging.info('Python version={}'.format(version[0]))
     if version[0] == '2':
         return pickle.load(f)
     elif version[0] == '3':
@@ -71,83 +85,8 @@ def load_pickle(f, encoding='latin1'):
     raise ValueError("invalid python version: {}".format(version))
 
 
-def show_accuracy_loss(train_acc, test_acc, train_loss, test_loss):
-    n = 2
-    _, figs = plt.subplots(1, n)
-    # fig[0]: train accuracy & test accuracy
-    figs[0].plot(train_acc, label='train accuracy')
-    figs[0].plot(test_acc, label='test accuracy')
-    figs[0].legend()
-    # fig[1]: train loss & test loss
-    figs[1].plot(train_loss, label='train loss')
-    figs[1].plot(test_loss, label='test loss')
-    figs[1].legend()
-    plt.show()
-
-
-def show_imgs(images, titles):
-    logging.info('M@{}, F@{}, show images: {}'.format(__name__, sys._getframe().f_code.co_name, titles))
-
-    if images.ndim == 4 and images.shape[3] == 1:
-        images_show = np.squeeze(images, axis=(3,))
-    else:
-        images_show = images
-
-    n = images_show.shape[0]
-    # _, figs = plt.subplots(1, n, figsize=(15, 15))
-    _, figs = plt.subplots(1, n)
-    for i in range(n):
-        figs[i].imshow(images_show[i])
-        figs[i].axes.get_xaxis().set_visible(False)
-        figs[i].axes.get_yaxis().set_visible(False)
-        figs[i].axes.set_title(titles[i])
-    plt.show()
-
-
-def show_img(window_title="log"):
-    """
-    coroutine by generator
-    Show images in new window
-    """
-    while True:
-        image, label = (yield)
-        cv2.namedWindow(window_title, cv2.WINDOW_NORMAL)
-        cv2.imshow(window_title, image)
-        cv2.waitKey(0)  # pause here
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            cv2.destroyAllWindows()
-            break
-
-
-def show_filter(filters, ncols=8, margin=3, scale=10):
-    """
-    c.f. https://gist.github.com/aidiary/07d530d5e08011832b12#file-draw_weight-py
-    """
-    FN, C, FH, FW = filters.shape
-    nrows = int(np.ceil(FN / ncols))
-    if FN < ncols:
-        ncols = FN
-
-    fig = plt.figure()
-    fig.subplots_adjust(left=0, right=1, bottom=0, top=1, hspace=0.05, wspace=0.05)
-
-    for index in range(FN):
-        # https://matplotlib.org/api/_as_gen/matplotlib.figure.Figure.html?highlight=add_subplot#matplotlib.figure.Figure.add_subplot
-        ax = fig.add_subplot(nrows, ncols, index+1, xticks=[], yticks=[])
-        ax.imshow(filters[index, 0], cmap=cm.gray_r, interpolation='nearest')
-    plt.show()
-
-
-def smooth_curve(x):
-    """損失関数のグラフを滑らかにするために用いる
-    Use covolution to smooth input data
-    参考：http://glowingpython.blogspot.jp/2012/02/convolution-with-numpy.html
-    """
-    window_len = 11
-    s = np.r_[x[window_len-1:0:-1], x, x[-1:-window_len:-1]]
-    w = np.kaiser(window_len, 2)
-    y = np.convolve(w/w.sum(), s, mode='valid')
-    return y[5:len(y)-5]
+def dump_pickle(data, f):
+    pickle.dump(data, f)
 
 
 def shuffle_dataset(x, t):
@@ -193,7 +132,6 @@ def im2col(input_data, filter_h, filter_w, stride=1, pad=0):
 
     img = np.pad(input_data, [(0, 0), (0, 0), (pad, pad), (pad, pad)], 'constant')
     col = np.zeros((N, C, filter_h, filter_w, out_h, out_w))
-    # logging.info("start im2col...")
     for y in range(filter_h):
         y_max = y + stride*out_h
         for x in range(filter_w):
@@ -201,7 +139,6 @@ def im2col(input_data, filter_h, filter_w, stride=1, pad=0):
             col[:, :, y, x, :, :] = img[:, :, y:y_max:stride, x:x_max:stride]
 
     col = col.transpose(0, 4, 5, 1, 2, 3).reshape(N*out_h*out_w, -1)
-    # logging.info("col shape: {}".format(col.shape))
 
     return col
 
@@ -235,6 +172,7 @@ def col2im(col, input_shape, filter_h, filter_w, stride=1, pad=0):
             img[:, :, y:y_max:stride, x:x_max:stride] += col[:, :, y, x, :, :]
 
     return img[:, :, pad:H + pad, pad:W + pad]
+
 
 if __name__ == '__main__':
     step_num = 2

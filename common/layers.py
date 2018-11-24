@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import logging; logging.basicConfig(level=logging.INFO)
-import numpy as np
-from common import functions
-from common.util import one_hot, im2col, col2im
+# import logging; logging.basicConfig(level=logging.INFO)
+import logging; logging.basicConfig(level=logging.DEBUG)
 import sys
+import numpy as np
+from .functions import mean_squared_error, softmax, cross_entropy
+from .util import one_hot, im2col, col2im
 
 
 class Affine(object):
@@ -60,7 +61,7 @@ class Affine(object):
         self.d_x = np.dot(d_y, self.W.T)
         self.d_W = np.dot(self.x.T, d_y)
         self.d_b = np.sum(d_y, axis=0)
-        self.d_x = self.d_x.reshape(*self.original_x_shape)  # reshape to input-data shape(for tensor use)
+        self.d_x = self.d_x.reshape(*self.original_x_shape)  # 入力データの形状に戻す（テンソル対応）
 
         return self.d_x
 
@@ -191,7 +192,7 @@ class MSE(object):
         self.x = x_batch
         self.t = t_batch
         self.y = self.x
-        self.loss = functions.mean_squared_error(self.y, self.t)
+        self.loss = mean_squared_error(self.y, self.t)
 
         return self.loss
 
@@ -203,7 +204,8 @@ class MSE(object):
 
 
 class SoftmaxCrossEntropy(object):
-    def __init__(self):
+    def __init__(self, class_num):
+        self.class_num = class_num
         self.x = None
         self.t = None
 
@@ -231,15 +233,15 @@ class SoftmaxCrossEntropy(object):
         # self.x = x_batch.copy()
         self.x = x_batch
         self.t = t_batch
-        self.y = functions.softmax(self.x)
-        self.loss = functions.cross_entropy(self.y, self.t)
+        self.y = softmax(self.x)
+        assert self.y.shape[0] == self.t.shape[0]
+        self.loss = cross_entropy(self.y, self.t)
         return self.loss
 
     def backward(self, d_y=1):
-        assert self.t.ndim == 1
         batch_size = self.y.shape[0]
         # 此处错误导致梯度无法正常下降
-        self.d_x = (self.y - one_hot(self.t)) / batch_size  # fix here: (y - t) / batch
+        self.d_x = (self.y - one_hot(self.t, class_num=self.class_num)) / batch_size  # fix here: (y - t) / batch
         return d_y * self.d_x
 
 
@@ -259,7 +261,7 @@ class Dropout(object):
             self.mask = np.random.rand(*x.shape) > self.drop_ratio
             return x * self.mask / self.keep_ratio
         else:
-            return x
+            return x * (1 - self.drop_ratio)  # only (1 - self.drop_ratio) of x was passed during training process
 
     def backward(self, d_y):
         return d_y * self.mask
@@ -269,8 +271,10 @@ class BatchNormalization(object):
     """
     http://arxiv.org/abs/1502.03167
     """
-
     def __init__(self, gamma, beta, momentum=0.9, running_mean=None, running_var=None):
+        self.x = None
+        self.t = None
+        self.y = None
         self.gamma = gamma
         self.beta = beta
         self.momentum = momentum
@@ -287,23 +291,26 @@ class BatchNormalization(object):
         self.dgamma = None
         self.dbeta = None
 
-    def forward(self, x, train_flg=True):
+    def forward(self, x, train_flag=True):  # train_flag=False
+        self.x = x
+        # rememner input shape
         self.input_shape = x.shape
         if x.ndim != 2:
             N, C, H, W = x.shape
             x = x.reshape(N, -1)
 
-        out = self.__forward(x, train_flg)
+        out = self.__forward(x, train_flag)
+        self.y = out.reshape(*self.input_shape)
 
-        return out.reshape(*self.input_shape)
+        return self.y
 
-    def __forward(self, x, train_flg):
+    def __forward(self, x, train_flag):
         if self.running_mean is None:
             N, D = x.shape
             self.running_mean = np.zeros(D)
             self.running_var = np.zeros(D)
 
-        if train_flg:
+        if train_flag:
             mu = x.mean(axis=0)
             xc = x - mu
             var = np.mean(xc ** 2, axis=0)
@@ -319,7 +326,6 @@ class BatchNormalization(object):
         else:
             xc = x - self.running_mean
             xn = xc / (np.sqrt(self.running_var + 10e-7))
-
         out = self.gamma * xn + self.beta
         return out
 
@@ -350,7 +356,7 @@ class BatchNormalization(object):
         return dx
 
 
-class Convolution:
+class Convolution(object):
     def __init__(self, weights, bias, stride=1, pad=0):
         self.W = weights
         self.b = bias
@@ -474,6 +480,7 @@ class Pooling(object):
         dx = col2im(dcol, self.x.shape, self.pool_h, self.pool_w, self.stride, self.pad)
         
         return dx
+
 
 if __name__ == '__main__':
     # data = (np.arange(9)+1).reshape(3, 3)

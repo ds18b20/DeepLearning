@@ -5,7 +5,8 @@ import numpy as np
 import common.layers as layers
 from collections import OrderedDict
 from common.datasets import MNIST
-from common.util import get_one_batch, show_imgs, show_accuracy_loss, show_filter
+from common.util import get_one_batch
+from common.visualize import show_imgs, show_accuracy_loss, show_filter
 import common.optimizer as optimizer
 
 
@@ -44,7 +45,7 @@ class SimpleConvNet(object):
         self.layers['Affine1'] = layers.Affine(self.params['W2'], self.params['b2'])
         self.layers['Relu2'] = layers.Relu()
         self.layers['Affine2'] = layers.Affine(self.params['W3'], self.params['b3'])
-        self.lossLayer = layers.SoftmaxCrossEntropy()
+        self.lossLayer = layers.SoftmaxCrossEntropy(class_num=10)
 
         # self.loss_list = []
 
@@ -100,7 +101,7 @@ def show_structure(net, x_batch, y_batch):
 
 
 if __name__ == '__main__':
-    mnist = MNIST('data\\mnist')
+    mnist = MNIST(r'datasets/mnist')
     train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=False, label_one_hot=False)
     # # show sample images
     # train_x_sample, train_y_sample = get_one_batch(train_x, train_y, batch_size=5)

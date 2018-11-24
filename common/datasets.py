@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import logging; logging.basicConfig(level=logging.INFO)
+# import logging; logging.basicConfig(level=logging.INFO)
+import logging; logging.basicConfig(level=logging.DEBUG)
 import struct
 import numpy as np
+import pandas as pd
 import os
 import sys
-from common.util import show_img, show_imgs, load_pickle, one_hot, label2name, get_one_batch
+from .util import load_pickle, dump_pickle, one_hot, label2name, get_one_batch
+# from .visualize import show_img, show_imgs
 
 mnist_fashion_name_list = ['t-shirt', 'trouser', 'pullover', 'dress', 'coat',
                            'sandal', 'shirt', 'sneaker', 'bag', 'ankle boot']
@@ -273,29 +276,41 @@ class TEXT(object):
         :param root: file path
         """
         self.root = root
+        self.filename = 'jaychou_lyrics.txt'
         self.corpus_chars = None
         self.char_to_idx_dict = None
         self.idx_to_char_dict = None
 
-    def load(self, filename='jaychou_lyrics.txt', convert=True):
+    def load(self, convert=True):
         """
         open a text file and return data as an array
-        :param filename: file name to open
         :param convert: convert \n \r \u3000 to space
         :return: ndarray data
         """
-        with open(os.path.join(self.root, filename), 'r', encoding='utf-8') as f:
-            data = f.read()  # --> str
-        if convert:
-            data = data.replace('\n', ' ').replace('\r', ' ').replace('\u3000', ' ')
-        # print(data.find('\u3000'))
-        # print(data[11044-2: 11044+2])
-        data = np.array(list(data))
-        self.corpus_chars = list(set(data))
-        logging.info('data size: {}, vocab size: {}'.format(len(data), len(self.corpus_chars)))
+        pkl_file_name = "jaychou_lyrics.pkl"
+        pkl_file_path = os.path.join(self.root, pkl_file_name)
+        if os.path.exists(pkl_file_path):
+            with open(pkl_file_path, 'rb') as f:
+                load_dict = load_pickle(f)
+                data, self.corpus_chars = load_dict['data'], load_dict['corpus_chars']
+        else:
+            with open(os.path.join(self.root, self.filename), 'r', encoding='utf-8') as f:
+                data = f.read()  # --> str
 
+            if convert:
+                data = data.replace('\n', ' ').replace('\r', ' ').replace('\u3000', ' ')
+            # print(data.find('\u3000'))
+            # print(data[11044-2: 11044+2])
+            data = np.array(list(data))
+            self.corpus_chars = list(set(data))
+            # for cPickle.dump
+            dump_dict = {'data': data, 'corpus_chars': self.corpus_chars}
+            dump_pickle(dump_dict, open(pkl_file_path, "wb"))
+
+        logging.info('data size: {}, vocab size: {}'.format(len(data), len(self.corpus_chars)))
         self.char_to_idx_dict = {ch: i for i, ch in enumerate(self.corpus_chars)}
         self.idx_to_char_dict = {i: ch for i, ch in enumerate(self.corpus_chars)}
+        data = self.char_to_idx(data)  # convert char array to index array
         return data
 
     def char_to_idx(self, batch_x_char):
@@ -308,15 +323,22 @@ class TEXT(object):
         return batch_x_idx
 
     def idx_to_char(self, batch_x_idx):
-        batch_x_char = np.zeros_like(batch_x_idx)
-        it = np.nditer(batch_x_idx, flags=['multi_index'])
-        while not it.finished:
-            idx = it.multi_index
-            batch_x_char[idx] = self.idx_to_char_dict[batch_x_idx[idx]]
-            it.iternext()
+        ori_shape = batch_x_idx.shape
+        length = batch_x_idx.size
+        batch_x_char = []
+        for idx in range(length):
+            batch_x_char.append(self.idx_to_char_dict[batch_x_idx[idx]])
+        batch_x_char = np.array(batch_x_char).reshape(ori_shape)
         return batch_x_char
 
-    def get_one_batch_random(self, data, batch_size, steps_num):
+    def get_one_batch_random(self, data, batch_size, steps_num, step_first=True):
+        """
+
+        :param data: data to be sliced
+        :param batch_size:
+        :param steps_num: sequential length
+        :return: sliced dataset with shape of ()
+        """
         x = np.array([])
         y = np.array([])
         valid_len = len(data) - steps_num - 1
@@ -324,13 +346,24 @@ class TEXT(object):
         for idx, start_pt in enumerate(start_pts):
             tmp_x = data[start_pt: start_pt + steps_num]
             tmp_y = data[start_pt + 1: start_pt + 1 + steps_num]
+            #  concatenate batch_size [steps_num * elements] to one serial
             if idx == 0:
                 x = tmp_x
                 y = tmp_y
             else:
                 x = np.concatenate((x, tmp_x))
                 y = np.concatenate((y, tmp_y))
-        return x.reshape(batch_size, steps_num), y.reshape(batch_size, steps_num)
+
+        x = x.reshape(batch_size, steps_num)
+        y = y.reshape(batch_size, steps_num)
+        # out put sequence length in first dimension
+        if step_first:
+            # x = x.transpose(1, 0)
+            # y = y.transpose(1, 0)
+            x = x.T
+            y = y.T
+
+        return x, y
 
     def data_iter_random(self, data, batch_size, steps_num):
         num_examples = (len(data) - 1) // steps_num
@@ -357,9 +390,97 @@ class TEXT(object):
             y = indices[:, idx + 1: idx + steps_num + 1]
             yield x, y
 
+            
+class HousePrices(object):
+    def __init__(self, root):
+        """
+        initialize HousePrices Loader with file path.
+        :param root: file path
+        """
+        self.root = root
+        self.train_filename='train.csv'
+        self.test_filename='test.csv'
+        self.test_id = None
+
+    def load(self, scale=True, label_log10=True, non_nan_ratio=0.75):
+        """
+        """
+        train_data = pd.read_csv(os.path.join(self.root, self.train_filename))
+        # keep columns which Non-NaN count > non_nan_ratio * ALL
+        # delete columns which Non-NaN count < non_nan_ratio * ALL
+        # delete columns which NaN count > non_nan_ratio * ALL 
+        train_data = train_data.dropna(axis=1, how='any', thresh=train_data.shape[0] * non_nan_ratio)
+        
+        test_data = pd.read_csv(os.path.join(self.root, self.test_filename))
+        # keep columns which Non-NaN count > non_nan_ratio * ALL
+        # delete columns which Non-NaN count < non_nan_ratio * ALL
+        # delete columns which NaN count > non_nan_ratio * ALL 
+        test_data = test_data.dropna(axis=1, how='any', thresh=test_data.shape[0] * non_nan_ratio)
+
+        self.test_id = test_data['Id'].values
+        
+        all_features = pd.concat((train_data.iloc[:, 1:-1], test_data.iloc[:, 1:]))  # remove ID & SalePrice(only in train) columns
+        numeric_features = all_features.dtypes[all_features.dtypes != 'object'].index  # index of numeric features
+        all_features[numeric_features] = all_features[numeric_features].apply(lambda x: (x - x.mean()) / (x.std()))  # normalization
+        all_features = all_features.fillna(all_features.mean())  # fill NaN with mean value
+        all_features = pd.get_dummies(all_features, dummy_na=True)  # dummy_na=True: take NaN as a legal feature label
+
+        # already scaled to [0, 1] !!!
+        if scale:  # scale data to [0, 1] by (features - features.min) / (features.max - features.min)
+            slices = (all_features.max() != 0).values
+            all_features -= all_features.min()
+            all_features.iloc[:, slices] /= all_features.iloc[:, slices].max()  # to avoid the case where /* max == 0 */
+        
+        n_train = train_data.shape[0]
+        train_features = all_features[:n_train].values
+        test_features = all_features[n_train:].values
+        train_labels = train_data.SalePrice.values.reshape((-1, 1))
+        
+        if label_log10:
+            assert (train_labels > 0).all()
+            train_labels = np.log10(train_labels)
+
+        return train_features, train_labels, test_features
+
+
+class MushroomClass(object):
+    def __init__(self, root):
+        """
+        initialize HousePrices Loader with file path.
+        :param root: file path
+        """
+        self.root = root
+        self.train_filename = 'mushrooms.csv'
+        self.test_id = None
+        self.column_name = None
+
+    def load(self, non_nan_ratio=0.75):
+        """
+        load Mushroom Classification dataset
+        :param scale:
+        :param label_log10:
+        :param non_nan_ratio:
+        :return:
+        """
+        data = pd.read_csv(os.path.join(self.root, self.train_filename))
+        label_data = data.iloc[:, 0]
+        label_data.replace({'e': 0, 'p': 1}, inplace=True)
+        
+        train_data = data.iloc[:, 1:]
+        train_data.replace('?', np.nan, inplace=True)  # replace '?' with np.nan
+        # keep columns which Non-NaN count > non_nan_ratio * ALL
+        # delete columns which Non-NaN count < non_nan_ratio * ALL
+        # delete columns which NaN count > non_nan_ratio * ALL
+        train_data.dropna(axis=1, how='any', thresh=train_data.shape[0] * non_nan_ratio, inplace=True)
+        # vectorize strings to numbers
+        train_data = pd.get_dummies(train_data, dummy_na=False)  # dummy_na=True take NaN as a legal feature label
+        self.column_name = train_data.columns.values
+
+        return train_data.values.astype(np.float64), label_data.values.reshape((-1, 1))
+
 
 if __name__ == '__main__':
-    # # test MNIST
+    """ test MNIST """
     # mnist = MNIST('datasets/mnist')
     # train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=False, label_one_hot=False)
     # train_x_batch, train_y_batch = get_one_batch(train_x, train_y, batch_size=10)
@@ -367,7 +488,7 @@ if __name__ == '__main__':
     # logging.info('batch test shape: {}'.format(train_y_batch.shape))
     # show_imgs(train_x_batch.transpose(0, 2, 3, 1), train_y_batch)
 
-    # # test CIFAR10
+    """ test CIFAR10 """
     # cifar10 = CIFAR10('datasets/cifar10')
     # train_x, train_y, test_x, test_y = cifar10.load_cifar10_batch_one(normalize=True)
     #
@@ -380,7 +501,7 @@ if __name__ == '__main__':
     #     sm.send((images[i], labels[i]))
     # show_imgs(images, cifar10.label2text(labels))
 
-    # # test CIFAR100
+    """ test CIFAR100 """
     # cifar100 = CIFAR100(r'datasets/cifar100')
     # train_x, train_y, test_x, test_y = cifar100.load_cifar100()
     #
@@ -393,13 +514,23 @@ if __name__ == '__main__':
     #     sm.send((images[i], labels[i]))
     # show_imgs(images, label2name(index_array=labels, label_array=cifar100.fine_label_names))
 
-    # # test TEXT
-    lyrics = TEXT('../datasets/text')
-    lyrics_data = lyrics.load()
+    """ test TEXT """
+    # lyrics = TEXT('../datasets/text')
+    # lyrics_data = lyrics.load()
 
-    print(lyrics.char_to_idx(np.array([['想', '要', '有'], ['想', '要', '有']])))
+    # print(lyrics.char_to_idx(np.array([['想', '要', '有'], ['想', '要', '有']])))
 
-    print(lyrics_data[0:10])
-    print(lyrics.char_to_idx(lyrics_data[0:10]))
-    print(lyrics_data[1:11])
-    print(lyrics.char_to_idx(lyrics_data[1:11]))
+    # print(lyrics_data[0:10])
+    # print(lyrics.char_to_idx(lyrics_data[0:10]))
+    # print(lyrics_data[1:11])
+    # print(lyrics.char_to_idx(lyrics_data[1:11]))
+    
+    """ test HousePrices """
+    # hp = HousePrices('../data')
+    # ret = hp.load()
+    # print(ret[0].shape, ret[1].shape, ret[2].shape)
+
+    """ test MushroomClass """
+    mc = MushroomClass('..\data\Mushroom')
+    ret = mc.load()
+    print(ret[0].shape, ret[1].shape)
