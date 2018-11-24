@@ -12,7 +12,7 @@ def mean_squared_error(y, label):
 
 
 def softmax(array):
-    tmp = array.copy()
+    tmp = array.copy()  # array will be modified later, so make a copy
     tmp -= tmp.max(axis=1, keepdims=True)  # max of array in axis_1(batch direction)
     exp = np.exp(tmp)  # exp(matrix)
     return exp / np.sum(exp, axis=1, keepdims=True)  # exp / sum of each row
@@ -20,9 +20,9 @@ def softmax(array):
 
 def cross_entropy(y, label):
     # slice prediction result by label
-    # TODO
-    # y/label can be multi dimensional array ???
+    # TODO y/label can be multi dimensional array ???
     assert y.shape[0] == label.shape[0]
+    assert label.ndims == 1
     delta = 1e-6  # in case of log(0)
     
     row_count = y.shape[0]

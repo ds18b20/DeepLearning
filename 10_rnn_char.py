@@ -6,8 +6,10 @@ import numpy as np
 from collections import OrderedDict
 from common.datasets import TEXT
 from common.util import one_hot
+from common.functions import softmax, cross_entropy
 import sys
 """
+Reference:
 Minimal character-level Vanilla RNN model. Written by Andrej Karpathy (@karpathy)
 BSD License
 """
@@ -26,6 +28,7 @@ class RNNcore(object):
 
         self.h = OrderedDict()
         self.y = OrderedDict()
+        self.p = OrderedDict()
 
         self.d_Wxh = None
         self.d_Whh = None
@@ -67,22 +70,25 @@ class RNNcore(object):
                                                                             h_shape)
         return ret_str
 
-    def forward(self, x_batch):
+    def forward(self, x_batch, y_batch):
         assert x_batch.ndim == 3
         self.x = x_batch
         self.step_num, self.batch_size, self.class_num = self.x.shape  # step x batch x class
-
         self.h[-1] = np.zeros((self.batch_size, self.h_size))
+        loss = 0
         for idx, x_step in enumerate(self.x):
             self.h[idx] = np.tanh(np.dot(x_step, self.Wxh) + np.dot(self.h[idx-1], self.Whh) + self.bh)
             self.y[idx] = np.dot(self.h[idx], self.Why) + self.by
+            self.p[idx] = softmax(self.y)
+            loss += cross_entropy(self.p, y_batch)
 
-        return self.y
+        return loss
 
     def backward(self, d_y_bp):
         self.d_Why = 0
         self.d_Wxh = 0
         self.d_Whh = 0
+
         for idx in range(self.step_num):
             tmp = np.dot(self.h[idx].T, d_y_bp[idx])
             self.d_Why += tmp
@@ -98,7 +104,7 @@ class RNNcore(object):
         return None  # no lower level layer
 
 if __name__ == '__main__':
-    text = TEXT(r"datasets/text")
+    text = TEXT(r"datasets\\text")
     text_data = text.load()
     vocab_num = len(text.corpus_chars)
     print(text_data[:10])

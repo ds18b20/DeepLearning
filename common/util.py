@@ -174,6 +174,16 @@ def col2im(col, input_shape, filter_h, filter_w, stride=1, pad=0):
     return img[:, :, pad:H + pad, pad:W + pad]
 
 
+def grad_clipping(params, theta):
+    norm = np.array([0.0])
+    for param in params:
+        norm += (param.grad ** 2).sum()
+    norm = norm.sqrt().asscalar()
+    if norm > theta:
+        for param in params:
+            param.grad[:] *= theta / norm
+
+
 if __name__ == '__main__':
     step_num = 2
     batch_size = 3

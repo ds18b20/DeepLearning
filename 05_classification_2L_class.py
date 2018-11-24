@@ -5,7 +5,8 @@ import numpy as np
 from collections import OrderedDict
 from common import layers
 from common.datasets import MNIST
-from common.util import one_hot, get_one_batch, show_imgs, show_accuracy_loss
+from common.util import one_hot, get_one_batch
+from common.visualize import show_imgs, show_accuracy_loss
 
 
 class TwoLayerNet(object):
@@ -24,7 +25,7 @@ class TwoLayerNet(object):
         self.layers['Relu1'] = layers.Relu()
         self.layers['Affine2'] = layers.Affine(self.params['W2'], self.params['b2'])
 
-        self.lossLayer = layers.SoftmaxCrossEntropy()
+        self.lossLayer = layers.SoftmaxCrossEntropy(class_num=10)
 
         self.loss_list = []
 
