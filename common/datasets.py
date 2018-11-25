@@ -362,6 +362,7 @@ class TEXT(object):
             # y = y.transpose(1, 0)
             x = x.T
             y = y.T
+            y = y[:, :, np.newaxis]
 
         return x, y
 
@@ -388,7 +389,7 @@ class TEXT(object):
             idx = i * steps_num
             x = indices[:, idx: idx + steps_num]
             y = indices[:, idx + 1: idx + steps_num + 1]
-            yield x, y
+            yield x.transpose(), y.transpose()[:, :, np.newaxis]
 
             
 class HousePrices(object):

@@ -120,8 +120,8 @@ class Tanh(object):
         return self.y
 
     def backward(self, d_y):
-        self.d_x = d_y * (1. - self.y ** 2)
-        return self.d_x
+        self.d_x = 1. - self.y ** 2
+        return d_y * self.d_x
 
 
 class Relu(object):

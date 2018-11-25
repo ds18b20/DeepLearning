@@ -21,8 +21,10 @@ def softmax(array):
 def cross_entropy(y, label):
     # slice prediction result by label
     # TODO y/label can be multi dimensional array ???
+    # y.shape: (batch_size, feature_size)
+    # label.shape: (batch_size, 1)
     assert y.shape[0] == label.shape[0]
-    assert label.ndims == 1
+    assert label.ndim == 2
     delta = 1e-6  # in case of log(0)
     
     row_count = y.shape[0]

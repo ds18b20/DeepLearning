@@ -174,21 +174,27 @@ def col2im(col, input_shape, filter_h, filter_w, stride=1, pad=0):
     return img[:, :, pad:H + pad, pad:W + pad]
 
 
-def grad_clipping(params, theta):
-    norm = np.array([0.0])
-    for param in params:
-        norm += (param.grad ** 2).sum()
-    norm = norm.sqrt().asscalar()
+def grad_clipping(grads, theta):
+    norm = np.sqrt(np.sum(grads ** 2))
+
     if norm > theta:
-        for param in params:
-            param.grad[:] *= theta / norm
+        grads *= theta / norm
+
+
+def simple_grad_clipping(grads, min_value=-5, max_value=5):
+    assert max_value > min_value
+    return np.clip(grads, min_value, max_value, out=grads)
 
 
 if __name__ == '__main__':
-    step_num = 2
-    batch_size = 3
-    class_num = 5
-    input_array = np.random.choice(class_num, size=(step_num, batch_size))
-    output_array = one_hot(input_array, class_num=class_num)
-    print('input_array:\n', input_array)
-    print('output_array:\n', output_array)
+    # step_num = 2
+    # batch_size = 3
+    # class_num = 5
+    # input_array = np.random.choice(class_num, size=(step_num, batch_size))
+    # output_array = one_hot(input_array, class_num=class_num)
+    # print('input_array:\n', input_array)
+    # print('output_array:\n', output_array)
+    a = np.arange(12).reshape(3, 4)
+    print(a)
+    simple_grad_clipping(a)
+    print(a)
