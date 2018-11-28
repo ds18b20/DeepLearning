@@ -137,15 +137,15 @@ class SimpleRNN(object):
         return np.zeros(shape=(batch_size, num_hiddens))
 
     def predict(self, prefix, output_num):
-        # inputs 和 outputs 皆为 num_steps 个形状为（batch_size，vocab_size）的矩阵。
+        # prefix 和 outputs 皆为 num_steps 个形状为（batch_size，vocab_size）的矩阵。
         H = self.init_rnn_state(1, self.h_size)
         outputs = []
         for X in prefix:
             H = np.tanh(np.dot(X, self.Wxh) + np.dot(H, self.Whh) + self.bh)
-            Y = np.dot(H, self.Why) + self.by
-            outputs.append(Y)
+            # Y = np.dot(H, self.Why) + self.by
+            # outputs.append(Y)
         for t in range(output_num):
-            X = np.array(outputs[-1])
+            X = prefix[-1]
             H = np.tanh(np.dot(X, self.Wxh) + np.dot(H, self.Whh) + self.bh)
             Y = np.dot(H, self.Why) + self.by
             outputs.append(Y)
@@ -162,15 +162,18 @@ if __name__ == '__main__':
         file_root_path = r"datasets/text"
     else:
         raise Exception("Invalid os!", os.name)
-    text = TEXT(file_root_path)
+    # text = TEXT(file_root_path, filename="jaychou_lyrics")
+    text = TEXT(file_root_path, filename="shakespeare_input")
     text_data = text.load()
+    print("text.corpus_chars:", text.corpus_chars)
     vocab_size = len(text.corpus_chars)
+    print('vocab_size:', vocab_size)
     print(text_data[:10])
     print(text.idx_to_char(text_data[:10]))
 
     # hyper-parameters
     batch_size = 10
-    hidden_size = 100  # size of hidden layer of neurons
+    hidden_size = 200  # size of hidden layer of neurons
     seq_length = 5  # number of steps to unroll the RNN for
     learning_rate = 1e-2
 
@@ -192,34 +195,40 @@ if __name__ == '__main__':
     params['bias_y'] = np.zeros(vocab_size)  #
 
     network = SimpleRNN(**params)
-    max_iteration = 10000
-    epoch = 100
+    max_iteration = 20000
+    epoch = 200
     loss_list = []
     for i in range(max_iteration):
+        x, t = next(g)
+        x = one_hot(x, class_num=vocab_size)
         network.update_data(x, t)
         loss = network.forward()
         loss_list.append(loss)
         network.backward()
         network.update_params()
         if i % epoch == 0:
-            print("loss:", loss)
+            # print('t:', [text.idx_to_char_dict[i] for i in t.flatten()])
+            print("{} / {} loss: {}".format(i, max_iteration, loss))
 
-    pre = "分开"
+    # pre = "分开"
+    pre = "This is true"
     pre_list = []
     for cha in pre:
         pre_list.append(text.char_to_idx_dict[cha])
     pre = np.array(pre_list).reshape(-1, 1)
     pre = one_hot(pre, class_num=vocab_size)
-    pre = pre.reshape(2, 1, -1)
+    print('pre.shape:', pre.shape)
+    pre = pre.reshape(len(pre), 1, -1)
     print('pre.shape:', pre.shape)
 
-    output, _ = network.predict(prefix=pre, output_num=10)
+    output, _ = network.predict(prefix=pre, output_num=100)
     print('output.shape:', output.shape)
 
     out_list =[]
     for o in output.flatten():
         out_list.append(text.idx_to_char_dict[o])
-    print(out_list)
+    out_str = ''.join(out_list)
+    print(out_str)
 
     """
     # hyper-parameters

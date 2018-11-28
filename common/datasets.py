@@ -270,13 +270,14 @@ class CIFAR100(object):
 
 
 class TEXT(object):
-    def __init__(self, root):
+    def __init__(self, root, filename):
         """
         initialize TEXT Loader with file path.
         :param root: file path
         """
         self.root = root
-        self.filename = 'jaychou_lyrics.txt'
+        self.filename = filename
+        self.full_filename = filename + '.txt'
         self.corpus_chars = None
         self.char_to_idx_dict = None
         self.idx_to_char_dict = None
@@ -287,22 +288,22 @@ class TEXT(object):
         :param convert: convert \n \r \u3000 to space
         :return: ndarray data
         """
-        pkl_file_name = "jaychou_lyrics.pkl"
+        pkl_file_name = self.filename + ".pkl"
         pkl_file_path = os.path.join(self.root, pkl_file_name)
         if os.path.exists(pkl_file_path):
             with open(pkl_file_path, 'rb') as f:
                 load_dict = load_pickle(f)
                 data, self.corpus_chars = load_dict['data'], load_dict['corpus_chars']
         else:
-            with open(os.path.join(self.root, self.filename), 'r', encoding='utf-8') as f:
+            with open(os.path.join(self.root, self.full_filename), 'r', encoding='utf-8') as f:
                 data = f.read()  # --> str
 
             if convert:
                 data = data.replace('\n', ' ').replace('\r', ' ').replace('\u3000', ' ')
             # print(data.find('\u3000'))
             # print(data[11044-2: 11044+2])
-            data = np.array(list(data))
             self.corpus_chars = list(set(data))
+            data = np.array(list(data))
             # for cPickle.dump
             dump_dict = {'data': data, 'corpus_chars': self.corpus_chars}
             dump_pickle(dump_dict, open(pkl_file_path, "wb"))

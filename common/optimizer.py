@@ -105,7 +105,7 @@ class Adam(object):
                 self.v[key] = np.zeros_like(val)
         
         self.iter += 1
-        lr_t  = self.lr * np.sqrt(1.0 - self.beta2**self.iter) / (1.0 - self.beta1**self.iter)         
+        lr_t = self.lr * np.sqrt(1.0 - self.beta2**self.iter) / (1.0 - self.beta1**self.iter)
         
         for key in params.keys():
             #self.m[key] = self.beta1*self.m[key] + (1-self.beta1)*grads[key]
