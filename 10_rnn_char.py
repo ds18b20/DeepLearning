@@ -7,6 +7,7 @@ from collections import OrderedDict
 from common.datasets import TEXT
 from common.util import one_hot, simple_grad_clipping
 from common.functions import softmax, cross_entropy
+from common.optimizer import SGD, Adam
 import sys
 import os
 """
@@ -17,19 +18,34 @@ BSD License
 
 
 class SimpleRNN(object):
-    def __init__(self, weights_xh, weights_hh, bias_h, weights_hy, bias_y):
-        # init para
-        self.x = None
-        self.t = None
+    def __init__(self,
+                 seq_length,
+                 batch_size,
+                 vocab_size,
+                 hidden_size,
+                 output_size,
+                 weight_init_std=0.01):
+        # structure init
+        self.hidden_size = hidden_size
+        self.seq_length = seq_length
+        self.batch_size = batch_size
+        self.vocab_size = vocab_size
 
-        self.Wxh = weights_xh
-        self.Whh = weights_hh
-        self.bh = bias_h
-        self.Why = weights_hy
-        self.by = bias_y
+        # weights init
+        self.params = {}
+        self.params['Wxh'] = weight_init_std * np.random.randn(vocab_size, hidden_size)  #
+        self.params['Whh'] = weight_init_std * np.random.randn(hidden_size, hidden_size)  #
+        self.params['bh'] = np.zeros(hidden_size)  #
+        self.params['Why'] = weight_init_std * np.random.randn(hidden_size, output_size)  #
+        self.params['by'] = np.zeros(output_size)  #
 
-        self.h_size = self.Wxh.shape[-1]
+        self.Wxh = self.params['Wxh']
+        self.Whh = self.params['Whh']
+        self.bh = self.params['bh']
+        self.Why = self.params['Why']
+        self.by = self.params['by']
 
+        # process value
         self.h = OrderedDict()
         self.y = OrderedDict()
         self.p = OrderedDict()
@@ -40,21 +56,22 @@ class SimpleRNN(object):
         self.d_Why = None
         self.d_by = None
 
-        self.seq_length = None
-        self.batch_size = None
-        self.vocab_size = None
+        self.x = None
+        self.t = None
 
-        # self.params = {}  # init parameters
-        # self.__init_params()
-        logging.info('M@{}, C@{}, F@{}, W_xh shape: {}, W_hh shape: {}'.format(__name__,
-                                                                               self.__class__.__name__,
-                                                                               sys._getframe().f_code.co_name,
-                                                                               self.Wxh.shape,
-                                                                               self.Whh.shape))
-        logging.info('M@{}, C@{}, F@{}, b_h shape: {}'.format(__name__,
-                                                              self.__class__.__name__,
-                                                              sys._getframe().f_code.co_name,
-                                                              self.bh.shape))
+        str_base = 'M@{}, C@{}, F@{}, W_xh shape: {}, W_hh shape: {}, b_h shape: {}'
+        logging.info(str_base.format(__name__,
+                                     self.__class__.__name__,
+                                     sys._getframe().f_code.co_name,
+                                     self.Wxh.shape,
+                                     self.Whh.shape,
+                                     self.bh.shape))
+        str_base = 'M@{}, C@{}, F@{}, W_hy shape: {}, b_y shape: {}'
+        logging.info(str_base.format(__name__,
+                                     self.__class__.__name__,
+                                     sys._getframe().f_code.co_name,
+                                     self.Why.shape,
+                                     self.by.shape))
 
     def __str__(self):
         if hasattr(self.x, 'shape'):
@@ -72,13 +89,13 @@ class SimpleRNN(object):
 
     def update_data(self, x_batch, t_batch):
         assert x_batch.ndim == 3
+        assert t_batch.ndim == 3
         self.x = x_batch
         self.t = t_batch
 
     def forward(self):
-        self.seq_length, self.batch_size, self.vocab_size = self.x.shape  # seq_length * batch_size * vocab_size
         if not self.h:  # when self.h is empty
-            self.h[-1] = np.zeros((self.batch_size, self.h_size))
+            self.h[-1] = np.zeros((self.batch_size, self.hidden_size))
         else:
             self.h[-1] = np.copy(self.h[self.seq_length - 1])
         loss = 0
@@ -124,7 +141,13 @@ class SimpleRNN(object):
                 simple_grad_clipping(grads)  # clip to mitigate exploding gradients
         self.d_by = np.sum(self.d_by, axis=0)
         self.d_bh = np.sum(self.d_bh, axis=0)
-        return None  # no lower level layer
+
+        # calculate gradients
+        grads = {}
+        grads["Wxh"], grads["Whh"], grads["bh"] = self.d_Wxh, self.d_Whh, self.d_bh
+        grads["Why"], grads["by"] = self.d_Why, self.d_by
+
+        return grads  #
 
     def update_params(self, learning_rate=1e-3):
         self.Wxh -= learning_rate * self.d_Wxh
@@ -138,7 +161,7 @@ class SimpleRNN(object):
 
     def predict(self, prefix, output_num):
         # prefix 和 outputs 皆为 num_steps 个形状为（batch_size，vocab_size）的矩阵。
-        H = self.init_rnn_state(1, self.h_size)
+        H = self.init_rnn_state(1, self.hidden_size)
         outputs = []
         for X in prefix:
             H = np.tanh(np.dot(X, self.Wxh) + np.dot(H, self.Whh) + self.bh)
@@ -154,6 +177,23 @@ class SimpleRNN(object):
         outputs = np.argmax(outputs, axis=2)
         return outputs, H
 
+    def sample(self, h, seed_ix, n):
+        """
+        sample a sequence of integers from the model
+        h is memory state, seed_ix is seed letter for first time step
+        """
+        x = np.zeros((1, self.vocab_size))
+        x[0][seed_ix] = 1
+        ixes = []
+        for t in range(n):
+            h = np.tanh(np.dot(x, self.Wxh) + np.dot(h, self.Whh) + self.bh)
+            y = np.dot(h, self.Why) + self.by
+            p = np.exp(y) / np.sum(np.exp(y))
+            ix = np.random.choice(range(self.vocab_size), p=p.ravel())
+            x = np.zeros((1, self.vocab_size))
+            x[0][ix] = 1
+            ixes.append(ix)
+        return ixes
 
 if __name__ == '__main__':
     if os.name == 'nt':
@@ -164,7 +204,7 @@ if __name__ == '__main__':
         raise Exception("Invalid os!", os.name)
     # text = TEXT(file_root_path, filename="jaychou_lyrics")
     text = TEXT(file_root_path, filename="shakespeare_input")
-    text_data = text.load()
+    text_data = text.load(convert=False)
     print("text.corpus_chars:", text.corpus_chars)
     vocab_size = len(text.corpus_chars)
     print('vocab_size:', vocab_size)
@@ -172,44 +212,49 @@ if __name__ == '__main__':
     print(text.idx_to_char(text_data[:10]))
 
     # hyper-parameters
-    batch_size = 10
-    hidden_size = 200  # size of hidden layer of neurons
-    seq_length = 5  # number of steps to unroll the RNN for
+    seq_length = 25  # number of steps to unroll the RNN for
+    batch_size = 1
+    hidden_size = 100  # size of hidden layer of neurons
     learning_rate = 1e-2
 
     # x, t = text.get_one_batch_random(text_data, batch_size=batch_size, steps_num=seq_length)
     g = text.data_iter_consecutive(text_data, batch_size=batch_size, steps_num=seq_length)
     x, t = next(g)
-    x = one_hot(x, class_num=vocab_size)
-    print("x.shape:", x.shape)
-    print("t.shape:", t.shape)
+    print("sample before one_hot x.shape:", x.shape)
+    x = one_hot(x, class_num=vocab_size, squeeze=False)
+    print("sample x.shape:", x.shape)
+    print("sample t.shape:", t.shape)
 
-    # weights init
-    weight_init_std = 0.01
-    params = OrderedDict()
+    network = SimpleRNN(seq_length, batch_size, vocab_size, hidden_size, output_size=vocab_size, weight_init_std=0.01)
 
-    params['weights_xh'] = weight_init_std * np.random.randn(vocab_size, hidden_size)  #
-    params['weights_hh'] = weight_init_std * np.random.randn(hidden_size, hidden_size)  #
-    params['bias_h'] = np.zeros(hidden_size)  #
-    params['weights_hy'] = weight_init_std * np.random.randn(hidden_size, vocab_size)  #
-    params['bias_y'] = np.zeros(vocab_size)  #
-
-    network = SimpleRNN(**params)
+    optimizer = Adam()
     max_iteration = 20000
     epoch = 200
     loss_list = []
     for i in range(max_iteration):
+        # update x, t
         x, t = next(g)
-        x = one_hot(x, class_num=vocab_size)
+        x_num = np.copy(x)
+        x = one_hot(x, class_num=vocab_size, squeeze=False)
         network.update_data(x, t)
+        # calculate loss
         loss = network.forward()
         loss_list.append(loss)
-        network.backward()
-        network.update_params()
+        # calculate gradients
+        grads = network.backward()
+        # network.update_params()
+        optimizer.update(network.params, grads)
         if i % epoch == 0:
-            # print('t:', [text.idx_to_char_dict[i] for i in t.flatten()])
+            print('x:', ''.join([text.idx_to_char_dict[i] for i in x_num.flatten()]))
+            print('t:', ''.join([text.idx_to_char_dict[i] for i in t.flatten()]))
             print("{} / {} loss: {}".format(i, max_iteration, loss))
 
+            sample_ix = network.sample(network.h[seq_length-1], x_num[0], 200)
+            txt = ''.join(text.idx_to_char_dict[ix] for ix in sample_ix)
+            print('----\n %s \n----' % (txt,))
+
+
+    """
     # pre = "分开"
     pre = "This is true"
     pre_list = []
@@ -229,27 +274,4 @@ if __name__ == '__main__':
         out_list.append(text.idx_to_char_dict[o])
     out_str = ''.join(out_list)
     print(out_str)
-
-    """
-    # hyper-parameters
-    batch_size = 2  # batch size
-    vocab_size = 128  # size of full vocabulary dataset
-    hidden_size = 100  # size of hidden layer of neurons
-    seq_length = 5  # number of steps to unroll the RNN for
-    learning_rate = 1e-1
-
-    # model parameters
-    Wxh = np.random.randn(vocab_size, hidden_size) * 0.01  # input to hidden
-    Whh = np.random.randn(hidden_size, hidden_size) * 0.01  # hidden to hidden
-    bh = np.zeros((1, hidden_size))  # hidden bias
-
-    Why = np.random.randn(hidden_size, vocab_size) * 0.01  # hidden to output
-    by = np.zeros((1, vocab_size))  # output bias
-
-    rnn = RNNcore(weights_xh=Wxh, weights_hh=Whh, bias_h=bh, weights_hy=Why, bias_y=by)
-    batch_x = one_hot(np.random.choice(vocab_size, size=(seq_length, batch_size)), class_num=vocab_size)
-    print(batch_x.shape)
-    y = rnn.forward(batch_x)
-    for key, value in y.items():
-        print(key, value.shape)
     """

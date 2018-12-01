@@ -19,13 +19,15 @@ def check_is_ndarray(input_array):
         print("Input data type should be ndarray.")
         
         
-def one_hot(input_array, class_num):
+def one_hot(input_array, class_num, squeeze=True):
     """
     (matrix, )-->(matrix, length)
     """
-    if input_array.shape[-1] == 1:
-        dim = input_array.ndim
-        input_array = np.squeeze(input_array, axis=dim - 1)
+    if squeeze:
+        if input_array.shape[-1] == 1:
+            dim = input_array.ndim
+            input_array = np.squeeze(input_array, axis=dim - 1)
+
     array_size = input_array.size
     array_shape = input_array.shape
 
@@ -34,7 +36,7 @@ def one_hot(input_array, class_num):
     ret = np.zeros((array_size, class_num))  # temp zero matrix
     ret[range(array_size), vec] = 1  # modify last dimension by vec values
 
-    return ret.reshape(*array_shape, class_num)
+    return ret.reshape(*array_shape, class_num)  # reshape to initial_shape + class_num
 
 
 def numerical_gradient(f, x):

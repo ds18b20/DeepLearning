@@ -400,8 +400,8 @@ class HousePrices(object):
         :param root: file path
         """
         self.root = root
-        self.train_filename='train.csv'
-        self.test_filename='test.csv'
+        self.train_filename = 'train.csv'
+        self.test_filename = 'test.csv'
         self.test_id = None
 
     def load(self, scale=True, label_log10=True, non_nan_ratio=0.75):
