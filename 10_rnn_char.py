@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-
 import logging; logging.basicConfig(level=logging.INFO)
 import numpy as np
 from collections import OrderedDict
@@ -195,6 +194,7 @@ class SimpleRNN(object):
             ixes.append(ix)
         return ixes
 
+
 if __name__ == '__main__':
     if os.name == 'nt':
         file_root_path = r"datasets\\text"
@@ -253,9 +253,7 @@ if __name__ == '__main__':
             txt = ''.join(text.idx_to_char_dict[ix] for ix in sample_ix)
             print('----\n %s \n----' % (txt,))
 
-
     """
-    # pre = "分开"
     pre = "This is true"
     pre_list = []
     for cha in pre:
