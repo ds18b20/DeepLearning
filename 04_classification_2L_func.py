@@ -3,7 +3,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from common.datasets import MNIST
-from common.util import one_hot, get_one_batch, show_imgs
+from common.util import one_hot, get_one_batch
+from common.visualize import show_imgs
 
 
 class Classification2(object):
@@ -76,7 +77,7 @@ class Classification2(object):
         :return: None
         """
         assert labels.ndim == 1
-        self.d_fc2_out = self.sm_out - one_hot(labels)  # (5, 10)
+        self.d_fc2_out = self.sm_out - one_hot(labels, class_num=10)  # (5, 10)
 
     def bp_fc2(self):
         """
@@ -167,7 +168,7 @@ def show_fashion_imgs(images, titles):
 
 
 if __name__ == '__main__':
-    mnist = MNIST('data/mnist')
+    mnist = MNIST('datasets/mnist')
     train_x, train_y, test_x, test_y = mnist.load(image_flat=True, label_one_hot=False)
     # show sample images
     sample_train_x, sample_train_y = get_one_batch(train_x, train_y, batch_size=5)
