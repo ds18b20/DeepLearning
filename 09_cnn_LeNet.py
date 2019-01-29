@@ -62,11 +62,11 @@ class LeNet(object):
         # affine 1
         self.layers['Affine1'] = layers.Affine(self.params['W3'], self.params['b3'])
         # relu 3
-        self.layers['Relu2'] = layers.Relu()
+        self.layers['Relu3'] = layers.Relu()
         # affine 2
         self.layers['Affine2'] = layers.Affine(self.params['W4'], self.params['b4'])
         # relu 4
-        self.layers['Relu2'] = layers.Relu()
+        self.layers['Relu4'] = layers.Relu()
         # affine 3
         self.layers['Affine3'] = layers.Affine(self.params['W5'], self.params['b5'])
         # loss
