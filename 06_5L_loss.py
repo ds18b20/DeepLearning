@@ -63,7 +63,7 @@ class MultiLayerNet:
         self.layers['Affine' + str(idx)] = layers.Affine(self.params['W' + str(idx)],
                                                          self.params['b' + str(idx)])
 
-        self.last_layer = layers.SoftmaxCrossEntropy()
+        self.last_layer = layers.SoftmaxCrossEntropy(class_num=10)
 
     def __init_weight(self, weight_init_std):
         """重みの初期値設定
@@ -180,7 +180,7 @@ class MultiLayerNet:
 
 
 if __name__ == '__main__':
-    mnist = MNIST('data/mnist')
+    mnist = MNIST('datasets\\mnist')
     train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
 
     max_iterations = 1000

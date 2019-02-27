@@ -125,7 +125,7 @@ if __name__ == '__main__':
     train_x_batch, train_y_batch = get_one_batch(train_x, train_y, batch_size=10)
     show_structure(network, train_x_batch, train_y_batch)
 
-    op = optimizer.Adam(lr=0.01)
+    op = optimizer.Adam(lr=0.001)
     epoch = 100
     for i in range(1000):
         train_x_batch, train_y_batch = get_one_batch(train_x, train_y, batch_size=10)

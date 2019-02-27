@@ -71,7 +71,7 @@ class TwoLayerNet(object):
 
 
 if __name__ == '__main__':
-    mnist = MNIST('data/mnist')
+    mnist = MNIST('datasets\\mnist')
     train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
     # show sample images
     sample_train_x, sample_train_y = get_one_batch(train_x, train_y, batch_size=5)

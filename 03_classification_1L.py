@@ -3,7 +3,8 @@
 import logging; logging.basicConfig(level=logging.INFO)
 import numpy as np
 from common.datasets import MNIST
-from common.util import one_hot, get_one_batch, show_imgs
+from common.util import one_hot, get_one_batch
+from common.visualize import show_imgs
 
 
 class Classification(object):
@@ -48,7 +49,7 @@ class Classification(object):
         :return: None
         """
         assert labels.ndim == 1
-        self.d_fc_out = self.sm_out - one_hot(labels)  # (5, 10)
+        self.d_fc_out = self.sm_out - one_hot(labels, class_num=10)  # (5, 10)
 
     def bp_fc(self, input_batch):
         """
@@ -106,7 +107,7 @@ def accuracy(y_hat: np.array, y: np.array):
 
 
 if __name__ == '__main__':
-    mnist = MNIST('data/mnist')
+    mnist = MNIST('datasets\\mnist')
     train_x, train_y, test_x, test_y = mnist.load(normalize=True, image_flat=True, label_one_hot=False)
 
     # show sample images
